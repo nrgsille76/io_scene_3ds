@@ -1099,7 +1099,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
             litepath.location = (-200, 70)
             links.new(layerfog.outputs[0], worldfog)
             links.new(litepath.outputs[8], layerfog.inputs[2])
-            links.new(litepath.outputs[2], nodes['Background'].inputs[1])
+            links.new(litepath.outputs[0], nodes['Background'].inputs[1])
             contextWorld.mist_settings.use_mist = True
             contextWorld.mist_settings.start = read_float(new_chunk)
             contextWorld.mist_settings.height = read_float(new_chunk)
