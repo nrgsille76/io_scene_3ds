@@ -1538,7 +1538,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
             keyframe_data = {}
             keyframe_data[0] = child.location[:]
             trackpos = mathutils.Vector(read_track_data(new_chunk)[0])
-            loca_mtx = mathutils.Matrix.Translation(-1*trackpos)
+            loca_mtx = mathutils.Matrix.Translation(trackpos)
             matrix_transform[child.name] = loca_mtx
             child.location = trackpos
             if child.type in {'LIGHT', 'CAMERA'}:
@@ -1618,7 +1618,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
             rota_mtx = mathutils.Matrix.Rotation(trackrot.angle, 4, trackrot.axis)
             transrot = matrix_transform.get(child.name)
             if transrot is not None:
-                matrix_transform[child.name] = rota_mtx.inverted() @ transrot
+                matrix_transform[child.name] = rota_mtx @ transrot
             child.rotation_euler = trackrot.to_euler()
             for keydata in keyframe_rotation.items():
                 rad, axis_x, axis_y, axis_z = keydata[1]
@@ -1713,7 +1713,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
         for obj, mtx in matrix_transform.items():
             cld = object_dictionary.get(obj)
             if (cld and cld.data) and cld.type == 'MESH':
-                cld.data.transform(mtx)
+                cld.data.transform(mtx.inverted())
 
     # Assign parents to objects
     # Check if we need to assign first because doing so recalcs the depsgraph
@@ -1773,7 +1773,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
                     mat = trans @ mat
                 cld = cld.parent
             if ob.type == 'MESH' and ob.data and ob.parent:
-                ob.data.transform(mat)
+                ob.data.transform(mat.inverted())
 
 
 ##########
