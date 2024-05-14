@@ -1711,9 +1711,12 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
     # Fix transform
     if APPLY_MATRIX:
         for obj, mtx in matrix_transform.items():
-            cld = object_dictionary.get(obj)
-            if (cld and cld.data) and cld.type == 'MESH':
-                cld.data.transform(mtx.inverted())
+            ob = object_dictionary.get(obj)
+            if ob:
+                ob_mat = ob.matrix_world if WORLD_MATRIX else ob.matrix_local
+                mtx = ob_mat @ mtx.inverted()
+                if ob.data and ob.type == 'MESH':
+                    ob.data.transform(mtx)
 
     # Assign parents to objects
     # Check if we need to assign first because doing so recalcs the depsgraph
