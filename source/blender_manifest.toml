@@ -1,10 +1,11 @@
 schema_version = "1.0.0"
 id = "autodesk_3ds_format"
-name = "Autodesk 3DS format"
-version = "2.5.1"
+name = "Autodesk 3DS Format (.3ds)"
+version = "2.6.0"
 tagline = "3DS Import/Export meshes, UVs, materials, textures, cameras . . "
 maintainer = "Community"
 type = "add-on"
+permissions = ["files"]
 tags = ["Import-Export"]
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-2.0-or-later"]
