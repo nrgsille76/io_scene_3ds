@@ -1677,8 +1677,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
             if data:
                 matrix = mtx @ global_matrix if use_apply_transform else global_matrix
-                data.transform(matrix)
-                data.transform(mtx_scale)
+                data.transform(mtx_scale @ matrix)
                 mesh_objects.append((ob_derived, data, matrix))
                 ma_ls = data.materials
                 ma_ls_len = len(ma_ls)
