@@ -1338,7 +1338,7 @@ def make_object_node(ob, translation, rotation, scale, name_id):
         obj_node.add_subchunk(obj_instance_name_chunk)
 
     if ob.type in {'MESH'} or EMPTYS:  # Add a pivot point at the object center
-        pivot_pos = (translation[name])
+        pivot_pos = (-1*translation[name])
         obj_pivot_chunk = _3ds_chunk(OBJECT_PIVOT)
         obj_pivot_chunk.add_variable("pivot", _3ds_point_3d(pivot_pos))
         obj_node.add_subchunk(obj_pivot_chunk)
