@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+#                         2022-2024 Sebastian Schrand
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -18,9 +19,9 @@ from bpy.props import (
 )
 import bpy
 bl_info = {
-    "name": "Autodesk 3DS format",
+    "name": "Autodesk 3DS Format (.3ds)",
     "author": "Bob Holcomb, Campbell Barton, Sebastian Schrand",
-    "version": (2, 5, 1),
+    "version": (2, 6, 0),
     "blender": (4, 2, 0),
     "location": "File > Import-Export",
     "description": "3DS Import/Export meshes, UVs, materials, textures, "
@@ -42,7 +43,7 @@ if "bpy" in locals():
 @orientation_helper(axis_forward='Y', axis_up='Z')
 class Import3DS(bpy.types.Operator, ImportHelper):
     """Import from 3DS file format (.3ds)"""
-    bl_idname = "import_scene.max3ds"
+    bl_idname = "import_scene.3ds"
     bl_label = 'Import 3DS'
     bl_options = {'PRESET', 'UNDO'}
 
@@ -181,7 +182,7 @@ def import_transform(layout, operator):
 @orientation_helper(axis_forward='Y', axis_up='Z')
 class Export3DS(bpy.types.Operator, ExportHelper):
     """Export to 3DS file format (.3ds)"""
-    bl_idname = "export_scene.max3ds"
+    bl_idname = "export_scene.3ds"
     bl_label = 'Export 3DS'
     bl_options = {'PRESET', 'UNDO'}
 
@@ -312,11 +313,11 @@ def export_transform(layout, operator):
         body.prop(operator, "axis_up")
 
 
-class IO_FH_3ds(bpy.types.FileHandler):
-    bl_idname = "IO_FH_3ds"
-    bl_label = "Autodesk 3DS"
-    bl_import_operator = "import_scene.max3ds"
-    bl_export_operator = "export_scene.max3ds"
+class IO_FH_3dsMax(bpy.types.FileHandler):
+    bl_idname = "IO_FH_3dsMax"
+    bl_label = "3DS"
+    bl_import_operator = "import_scene.3ds"
+    bl_export_operator = "export_scene.3ds"
     bl_file_extensions = ".3ds;.3DS"
 
     @classmethod
@@ -326,17 +327,17 @@ class IO_FH_3ds(bpy.types.FileHandler):
 
 # Add to a menu
 def menu_func_export(self, context):
-    self.layout.operator(Export3DS.bl_idname, text="3D Studio (.3ds)")
+    self.layout.operator(Export3DS.bl_idname, text="Autodesk 3DS (.3ds)")
 
 
 def menu_func_import(self, context):
-    self.layout.operator(Import3DS.bl_idname, text="3D Studio (.3ds)")
+    self.layout.operator(Import3DS.bl_idname, text="Autodesk 3DS (.3ds)")
 
 
 def register():
     bpy.utils.register_class(Import3DS)
     bpy.utils.register_class(Export3DS)
-    bpy.utils.register_class(IO_FH_3ds)
+    bpy.utils.register_class(IO_FH_3dsMax)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
@@ -344,7 +345,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(Import3DS)
     bpy.utils.unregister_class(Export3DS)
-    bpy.utils.unregister_class(IO_FH_3ds)
+    bpy.utils.unregister_class(IO_FH_3dsMax)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
