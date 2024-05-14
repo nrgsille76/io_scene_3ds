@@ -1273,7 +1273,7 @@ def make_track_chunk(ID, ob, ob_pos, ob_rot, ob_size):
     return track_chunk
 
 
-def make_object_node(ob, translation, rotation, scale, name_id):
+def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform):
     """Make a node chunk for a Blender object. Takes Blender object as parameter.
        Blender Empty objects are converted to dummy nodes."""
 
@@ -1338,7 +1338,8 @@ def make_object_node(ob, translation, rotation, scale, name_id):
         obj_node.add_subchunk(obj_instance_name_chunk)
 
     if ob.type in {'MESH'} or EMPTYS:  # Add a pivot point at the object center
-        pivot_pos = (-1*translation[name])
+        center_pos = mathutils.Vector((0.0, 0.0, 0.0))
+        pivot_pos = center_pos if use_apply_transform else (translation[name])
         obj_pivot_chunk = _3ds_chunk(OBJECT_PIVOT)
         obj_pivot_chunk.add_variable("pivot", _3ds_point_3d(pivot_pos))
         obj_node.add_subchunk(obj_pivot_chunk)
@@ -1893,14 +1894,14 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Export object node
         if use_keyframes:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id))
+            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
 
         i += i
 
     # Create chunks for all empties - only requires a object node
     if use_keyframes:
         for ob in empty_objects:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id))
+            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
 
     # Create light object chunks
     for ob in light_objects:
@@ -1989,7 +1990,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Export light and spotlight target node
         if use_keyframes:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id))
+            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
             if ob.data.type == 'SPOT':
                 kfdata.add_subchunk(make_target_node(ob, translation, rotation, scale, name_id))
 
@@ -2026,7 +2027,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Export camera and target node
         if use_keyframes:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id))
+            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
             kfdata.add_subchunk(make_target_node(ob, translation, rotation, scale, name_id))
 
     # Add main object info chunk to primary chunk
