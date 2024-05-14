@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2005 Bob Holcomb
+#                         2022 NRG Sille
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -1702,8 +1703,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
         # update the previous chunk bytes read
         previous_chunk.bytes_read += new_chunk.bytes_read
 
-    # FINISHED LOOP
-    # There will be a number of objects still not added
+    # FINISHED LOOP - There will be a number of objects still not added
     if CreateBlenderObject:
         putContextMesh(context, contextMesh_vertls, contextMesh_facels, contextMesh_flag,
             contextMeshMaterials, contextMesh_smooth, WORLD_MATRIX)
