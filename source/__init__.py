@@ -29,6 +29,7 @@ bl_info = {
     "warning": "Images must be in file folder, "
                "filenames are limited to DOS 8.3 format",
     "doc_url": "{BLENDER_MANUAL_URL}/addons/import_export/scene_3ds.html",
+    "tracker_url": "https://projects.blender.org/extensions/io_scene_3ds/issues",
     "category": "Import-Export",
 }
 
