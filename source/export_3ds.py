@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2005 Bob Holcomb
+#                         2022 NRG Sille
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
