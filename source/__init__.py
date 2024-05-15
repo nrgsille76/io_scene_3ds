@@ -18,20 +18,6 @@ from bpy.props import (
     CollectionProperty,
 )
 import bpy
-bl_info = {
-    "name": "Autodesk 3DS Format (.3ds)",
-    "author": "Bob Holcomb, Campbell Barton, Sebastian Schrand",
-    "version": (2, 6, 0),
-    "blender": (4, 2, 0),
-    "location": "File > Import-Export",
-    "description": "3DS Import/Export meshes, UVs, materials, textures, "
-                   "cameras, lamps & animation",
-    "warning": "Images must be in file folder, "
-               "filenames are limited to DOS 8.3 format",
-    "doc_url": "{BLENDER_MANUAL_URL}/addons/import_export/scene_3ds.html",
-    "tracker_url": "https://projects.blender.org/extensions/io_scene_3ds/issues",
-    "category": "Import-Export",
-}
 
 if "bpy" in locals():
     import importlib
