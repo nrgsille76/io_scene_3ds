@@ -186,8 +186,7 @@ scn = None
 
 object_dictionary = {}
 parent_dictionary = {}
-matrix_transform = {}
-object_matrix = {}
+matrix_dictionary = {}
 
 
 class Chunk:
@@ -355,9 +354,8 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
 childs_list = []
 parent_list = []
 
-def process_next_chunk(context, file, previous_chunk, imported_objects,
-                       CONSTRAIN, FILTER, IMAGE_SEARCH, WORLD_MATRIX,
-                       KEYFRAME, APPLY_MATRIX, CONVERSE, MEASURE, CURSOR):
+def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAIN, FILTER,
+                       IMAGE_SEARCH, KEYFRAME, APPLY_MATRIX, CONVERSE, MEASURE, CURSOR):
 
     contextObName = None
     contextWorld = None
@@ -367,7 +365,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
     contextAlpha = None
     contextColor = None
     contextWrapper = None
-    contextMatrix = None
     contextReflection = None
     contextTransmission = None
     contextMesh_vertls = None
@@ -398,7 +395,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
     trackposition = {}  # keep track to position for target calculation
 
     def putContextMesh(context, ContextMesh_vertls, ContextMesh_facels, ContextMesh_flag,
-                       ContextMeshMaterials, ContextMesh_smooth, WORLD_MATRIX):
+                       ContextMeshMaterials, ContextMesh_smooth):
 
         bmesh = bpy.data.meshes.new(contextObName)
 
@@ -485,13 +482,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
                 bmesh.polygons[f].use_smooth = True if smoothface > 0 else False
         else:
             bmesh.polygons.foreach_set("use_smooth", [False] * len(bmesh.polygons))
-
-        if contextMatrix:
-            if WORLD_MATRIX:
-                ob.matrix_world = contextMatrix
-            else:
-                ob.matrix_local = contextMatrix
-            object_matrix[ob] = contextMatrix.copy()
 
     # a spare chunk
     new_chunk = Chunk()
@@ -707,9 +697,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
 
         # The main object info chunk
         elif new_chunk.ID == OBJECTINFO:
-            process_next_chunk(context, file, new_chunk, imported_objects,
-                               CONSTRAIN, FILTER, IMAGE_SEARCH, WORLD_MATRIX,
-                               KEYFRAME, APPLY_MATRIX, CONVERSE, MEASURE, CURSOR)
+            process_next_chunk(context, file, new_chunk, imported_objects, CONSTRAIN, FILTER,
+                               IMAGE_SEARCH, KEYFRAME, APPLY_MATRIX, CONVERSE, MEASURE, CURSOR)
 
             # keep track of how much we read in the main chunk
             new_chunk.bytes_read += temp_chunk.bytes_read
@@ -1165,7 +1154,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
         elif new_chunk.ID == OBJECT:
             if CreateBlenderObject:
                 putContextMesh(context, contextMesh_vertls, contextMesh_facels, contextMesh_flag,
-                               contextMeshMaterials, contextMesh_smooth, WORLD_MATRIX)
+                               contextMeshMaterials, contextMesh_smooth)
 
                 contextMesh_vertls = []
                 contextMesh_facels = []
@@ -1173,7 +1162,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
                 contextMesh_flag = None
                 contextMesh_smooth = None
                 contextMeshUV = None
-                contextMatrix = None
 
             CreateBlenderObject = True if CreateMesh else False
             CreateLightObject = CreateCameraObject = False
@@ -1225,8 +1213,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
             temp_data = file.read(SZ_4x3MAT)
             mtx = list(struct.unpack('<ffffffffffff', temp_data))
             new_chunk.bytes_read += SZ_4x3MAT
-            contextMatrix = mathutils.Matrix(
-                (mtx[:3] + [0], mtx[3:6] + [0], mtx[6:9] + [0], mtx[9:] + [1])).transposed()
+            matrix = mathutils.Matrix((mtx[:3]+[0], mtx[3:6]+[0], mtx[6:9]+[0], mtx[9:]+[1])).transposed()
+            matrix_dictionary[contextObName] = matrix
 
         # If hierarchy chunk
         elif CreateMesh and new_chunk.ID == OBJECT_HIERARCHY:
@@ -1249,7 +1237,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
                 object_dictionary[contextObName] = contextLamp
                 contextLamp.data.use_shadow = False
                 contextLamp.location = read_float_array(new_chunk)  # Position
-            contextMatrix = None # Reset matrix
         elif CreateLightObject and new_chunk.ID == COLOR_F:  # Color
             contextLamp.data.color = read_float_array(new_chunk)
         elif CreateLightObject and new_chunk.ID == LIGHT_OUTER_RANGE:  # Distance
@@ -1352,7 +1339,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
                 contextCamera.rotation_euler.y = read_float(new_chunk)  # Roll
                 contextCamera.rotation_euler.z = direction[1]
                 contextCamera.data.lens = read_float(new_chunk)  # Focal length
-            contextMatrix = None  # Reset matrix
         elif CreateCameraObject and new_chunk.ID == OBJECT_CAM_RANGES:  # Range
             camrange = read_float(new_chunk)
             startrange = camrange if camrange >= 0.01 else 0.1
@@ -1538,10 +1524,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
         elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG and tracktype == 'OBJECT':  # Translation
             keyframe_data = {}
             keyframe_data[0] = child.location[:]
-            trackpos = mathutils.Vector(read_track_data(new_chunk)[0])
-            loca_mtx = mathutils.Matrix.Translation(trackpos)
-            matrix_transform[child.name] = loca_mtx
-            child.location = trackpos
+            child.location = mathutils.Vector(read_track_data(new_chunk)[0])
             if child.type in {'LIGHT', 'CAMERA'}:
                 trackposition[0] = child.location
                 CreateTrackData = True
@@ -1615,12 +1598,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
                 new_chunk.bytes_read += SZ_4FLOAT
                 keyframe_rotation[nframe] = rotation
             rad, axis_x, axis_y, axis_z = keyframe_rotation[0]
-            trackrot = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad)  # Why negative?
-            rota_mtx = mathutils.Matrix.Rotation(trackrot.angle, 4, trackrot.axis)
-            transrot = matrix_transform.get(child.name)
-            if transrot is not None:
-                matrix_transform[child.name] = rota_mtx @ transrot
-            child.rotation_euler = trackrot.to_euler()
+            child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler()  # Why negative?
             for keydata in keyframe_rotation.items():
                 rad, axis_x, axis_y, axis_z = keydata[1]
                 child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler()
@@ -1636,12 +1614,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
         elif KEYFRAME and new_chunk.ID == SCL_TRACK_TAG and tracktype == 'OBJECT':  # Scale
             keyframe_data = {}
             keyframe_data[0] = child.scale[:]
-            trackscale = mathutils.Vector(read_track_data(new_chunk)[0])
-            scale_mtx = mathutils.Matrix.Diagonal(trackscale)
-            transscale = matrix_transform.get(child.name)
-            if transscale is not None:
-                matrix_transform[child.name] = scale_mtx.to_4x4() @ transscale
-            child.scale = trackscale
+            child.scale = mathutils.Vector(read_track_data(new_chunk)[0])
             if contextTrack_flag & 0x8:  # Flag 0x8 locks X axis
                 child.lock_scale[0] = True
             if contextTrack_flag & 0x10:  # Flag 0x10 locks Y axis
@@ -1706,34 +1679,33 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
     # FINISHED LOOP - There will be a number of objects still not added
     if CreateBlenderObject:
         putContextMesh(context, contextMesh_vertls, contextMesh_facels, contextMesh_flag,
-            contextMeshMaterials, contextMesh_smooth, WORLD_MATRIX)
+                       contextMeshMaterials, contextMesh_smooth)
 
-    # Fix transform
+    # APPLY MATRIX transformation
     if APPLY_MATRIX:
-        for obj, mtx in matrix_transform.items():
-            ob = object_dictionary.get(obj)
-            if ob:
-                ob_mat = ob.matrix_world if WORLD_MATRIX else ob.matrix_local
-                mtx = ob_mat @ mtx.inverted()
-                if ob.data and ob.type == 'MESH':
-                    ob.data.transform(mtx)
+        for ob in object_list:
+            obj = object_dictionary.get(ob.name)
+            mtx = matrix_dictionary.get(ob.name)
+            if mtx and obj.type == 'MESH':
+                obj.data.transform(mtx.inverted())
 
     # Assign parents to objects
     # Check if we need to assign first because doing so recalcs the depsgraph
     for ind, ob in enumerate(object_list):
         if ob is None:
             continue
-        parent = object_parent[ind]
-        if parent == ROOT_OBJECT:
+        idx = object_parent[ind]
+        if idx == ROOT_OBJECT:
             ob.parent = None
-        elif parent not in object_dict:
+        elif idx not in object_dict:
+            parent = idx if idx != object_list.index(ob) else idx - 1
             try:
                 ob.parent = object_list[parent]
             except Exception as exc:
-                print("\tError: ", exc)
+                print("\tIndexError:", exc)
         else:  # get parent from node_id number
             try:
-                ob.parent = object_dict.get(parent)
+                ob.parent = object_dict.get(idx)
             except:  # self to parent exception
                 pass
 
@@ -1763,28 +1735,16 @@ def process_next_chunk(context, file, previous_chunk, imported_objects,
             continue
         elif ob.type == 'MESH':
             pivot = pivot_list[ind]
-            pivot_matrix = object_matrix.get(ob, mathutils.Matrix())  # unlikely to fail
+            pivot_matrix = matrix_dictionary.get(ob, mathutils.Matrix())  # unlikely to fail
             pivot_matrix = mathutils.Matrix.Translation(pivot_matrix.to_3x3() @ pivot)
             ob.data.transform(pivot_matrix)
-        if APPLY_MATRIX:
-            cld = ob
-            mat = mathutils.Matrix()
-            while cld.parent:
-                trans = matrix_transform.get(cld.parent.name)
-                if trans is not None:
-                    mat = trans @ mat
-                cld = cld.parent
-            if ob.type == 'MESH' and ob.data and ob.parent:
-                ob.data.transform(mat.inverted())
-
 
 ##########
 # IMPORT #
 ##########
 
 def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
-             FILTER=None, WORLD_MATRIX=False, KEYFRAME=True, APPLY_MATRIX=True,
-             CONVERSE=None, CURSOR=False, PIVOT=False):
+             FILTER=None, KEYFRAME=True, APPLY_MATRIX=True, CONVERSE=None, CURSOR=False):
 
     print("importing 3DS: %r..." % (filepath), end="")
 
@@ -1810,8 +1770,7 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
 
     # fixme, make unglobal, clear in case
     object_dictionary.clear()
-    matrix_transform.clear()
-    object_matrix.clear()
+    matrix_dictionary.clear()
     scn = context.scene
 
     if UNITS:
@@ -1836,19 +1795,11 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
     context.window.cursor_set('WAIT')
     imported_objects = []  # Fill this list with objects
     process_next_chunk(context, file, current_chunk, imported_objects, CONSTRAIN, FILTER,
-                       IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME, APPLY_MATRIX, CONVERSE, MEASURE, CURSOR)
+                       IMAGE_SEARCH, KEYFRAME, APPLY_MATRIX, CONVERSE, MEASURE, CURSOR)
 
     # fixme, make unglobal
-    matrix_transform.clear()
     object_dictionary.clear()
-    object_matrix.clear()
-
-    """
-    if APPLY_MATRIX:
-        for ob in imported_objects:
-            if ob.type == 'MESH':
-                ob.data.transform(ob.matrix_local.inverted())
-    """
+    matrix_dictionary.clear()
 
     if UNITS:
         unit_mtx = mathutils.Matrix.Scale(MEASURE,4)
@@ -1870,13 +1821,6 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
             ob.scale.y = (square / (math.sqrt(pow(aspect,2) + 1.0)))
             ob.scale.z = 1.0
         ob.select_set(True)
-        if ob.type == 'MESH':
-            if PIVOT:
-                bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN')
-            if not APPLY_MATRIX:  # Reset transform
-                bpy.ops.object.rotation_clear()
-                bpy.ops.object.location_clear()
-                bpy.ops.object.scale_clear()
 
     context.view_layer.update()
 
@@ -1918,9 +1862,9 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
     file.close()
 
 
-def load(operator, context, files=None, directory="", filepath="", constrain_size=0.0, use_scene_unit=False,
-         use_image_search=True, object_filter=None, use_world_matrix=False, use_keyframes=True,
-         use_apply_transform=True, global_matrix=None, use_cursor=False, use_center_pivot=False, use_collection=False):
+def load(operator, context, files=None, directory="", filepath="", constrain_size=0.0,
+         use_scene_unit=False, use_image_search=True, object_filter=None, use_keyframes=True,
+         use_apply_transform=True, global_matrix=None, use_cursor=False, use_collection=False):
 
     # Get the active collection
     collection_init = context.view_layer.active_layer_collection.collection
@@ -1933,8 +1877,8 @@ def load(operator, context, files=None, directory="", filepath="", constrain_siz
             context.scene.collection.children.link(collection)
             context.view_layer.active_layer_collection = context.view_layer.layer_collection.children[collection.name]
         load_3ds(Path(directory, file.name), context, CONSTRAIN=constrain_size, UNITS=use_scene_unit,
-             IMAGE_SEARCH=use_image_search, FILTER=object_filter, WORLD_MATRIX=use_world_matrix, KEYFRAME=use_keyframes,
-             APPLY_MATRIX=use_apply_transform, CONVERSE=global_matrix, CURSOR=use_cursor, PIVOT=use_center_pivot,)
+             IMAGE_SEARCH=use_image_search, FILTER=object_filter, KEYFRAME=use_keyframes,
+             APPLY_MATRIX=use_apply_transform, CONVERSE=global_matrix, CURSOR=use_cursor,)
 
     # Retrive the initial collection as active
     active = context.view_layer.layer_collection.children.get(collection_init.name)
