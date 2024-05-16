@@ -52,11 +52,6 @@ class Import3DS(bpy.types.Operator, ImportHelper):
         description="Convert to scene unit length settings",
         default=False,
     )
-    use_center_pivot: BoolProperty(
-        name="Pivot Origin",
-        description="Move all geometry to pivot origin",
-        default=False,
-    )
     use_image_search: BoolProperty(
         name="Image Search",
         description="Search subdirectories for any associated images "
@@ -84,11 +79,6 @@ class Import3DS(bpy.types.Operator, ImportHelper):
         name="Animation",
         description="Read the keyframe data",
         default=True,
-    )
-    use_world_matrix: BoolProperty(
-        name="World Space",
-        description="Transform to matrix world",
-        default=False,
     )
     use_collection: BoolProperty(
         name="Collection",
@@ -154,14 +144,8 @@ def import_transform(layout, operator):
         line.prop(operator, "use_scene_unit")
         line.label(text="", icon='EMPTY_ARROWS' if operator.use_scene_unit else 'EMPTY_DATA')
         line = body.row(align=True)
-        line.prop(operator, "use_center_pivot")
-        line.label(text="", icon='OVERLAY' if operator.use_center_pivot else 'PIVOT_ACTIVE')
-        line = body.row(align=True)
         line.prop(operator, "use_apply_transform")
         line.label(text="", icon='MESH_CUBE' if operator.use_apply_transform else 'MOD_SOLIDIFY')
-        line = body.row(align=True)
-        line.prop(operator, "use_world_matrix")
-        line.label(text="", icon='WORLD' if operator.use_world_matrix else 'META_BALL')
         body.prop(operator, "axis_forward")
         body.prop(operator, "axis_up")
 
