@@ -1338,9 +1338,9 @@ def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transf
         obj_instance_name_chunk.add_variable("name", _3ds_string(sane_name(name)))
         obj_node.add_subchunk(obj_instance_name_chunk)
 
-    if ob.type in {'MESH'} or EMPTYS:  # Add a pivot point at the object center
+    if ob.type == 'MESH' or ob.type in EMPTYS:  # Add a pivot point at the object center
         center_pos = mathutils.Vector((0.0, 0.0, 0.0))
-        pivot_pos = center_pos if use_apply_transform else (translation[name])
+        pivot_pos = (translation[name]) if use_apply_transform else center_pos
         obj_pivot_chunk = _3ds_chunk(OBJECT_PIVOT)
         obj_pivot_chunk.add_variable("pivot", _3ds_point_3d(pivot_pos))
         obj_node.add_subchunk(obj_pivot_chunk)
@@ -1371,7 +1371,7 @@ def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transf
 
     obj_node.add_subchunk(make_track_chunk(POS_TRACK_TAG, ob, ob_pos, ob_rot, ob_scale))
 
-    if ob.type in {'MESH'} or EMPTYS:
+    if ob.type == 'MESH' or ob.type in EMPTYS:
         obj_node.add_subchunk(make_track_chunk(ROT_TRACK_TAG, ob, ob_pos, ob_rot, ob_size))
         obj_node.add_subchunk(make_track_chunk(SCL_TRACK_TAG, ob, ob_pos, ob_rot, ob_size))
     if ob.type =='CAMERA':
@@ -1569,7 +1569,6 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
     # Time the export
     duration = time.time()
     context.window.cursor_set('WAIT')
-
     scene = context.scene
     layer = context.view_layer
     depsgraph = context.evaluated_depsgraph_get()
