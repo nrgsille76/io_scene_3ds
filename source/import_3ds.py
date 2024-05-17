@@ -1689,38 +1689,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             if mtx and obj.type == 'MESH':
                 obj.data.transform(mtx.inverted())
 
-    # Assign parents to objects
-    # Check if we need to assign first because doing so recalcs the depsgraph
-    for ind, ob in enumerate(object_list):
-        if ob is None:
-            continue
-        idx = object_parent[ind]
-        if idx == ROOT_OBJECT:
-            ob.parent = None
-        elif idx not in object_dict:
-            parent = idx if idx != object_list.index(ob) else idx - 1
-            try:
-                ob.parent = object_list[parent]
-            except Exception as exc:
-                print("\tIndexError:", exc)
-        else:  # get parent from node_id number
-            try:
-                ob.parent = object_dict.get(idx)
-            except:  # self to parent exception
-                pass
-
-        #pivot_list[ind] += pivot_list[parent]  # Not sure this is correct, should parent space matrix be applied before combining?
-
-    # if parent name
-    parent_dictionary.pop(None, ...)
-    for par, objs in parent_dictionary.items():
-        parent = object_dictionary.get(par)
-        for ob in objs:
-            if parent is not None:
-                ob.parent = parent
-    parent_dictionary.clear()
-
     # If hierarchy
+    FOUND = False
     hierarchy = dict(zip(childs_list, parent_list))
     hierarchy.pop(None, ...)
     for idt, (child, parent) in enumerate(hierarchy.items()):
@@ -1729,15 +1699,39 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # fix pivots
+    # Assign parents to objects
+    # Check if we need to assign first because doing so recalcs the depsgraph
+    parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
             continue
-        elif ob.type == 'MESH':
-            pivot = pivot_list[ind]
-            pivot_matrix = matrix_dictionary.get(ob, mathutils.Matrix())  # unlikely to fail
-            pivot_matrix = mathutils.Matrix.Translation(pivot_matrix.to_3x3() @ -pivot)
+        elif ob.name in parent_dictionary.keys():
+            kids = parent_dictionary.get(ob.name)
+            for kid in kids:
+                parent = object_dictionary.get(ob.name)
+                kid.parent = parent
+            FOUND = True
+        elif not FOUND:
+            idx = object_parent[ind]
+            if idx not in object_dict:
+                parent = idx if idx != object_list.index(ob) else idx - 1
+                try:
+                    ob.parent = object_list[parent]
+                except Exception as exc:
+                    print("\tIndexError:", exc)
+            else:
+                try:  # get parent from node_id number
+                    ob.parent = object_dict.get(idx)
+                except:  # self to parent exception
+                    pass
+
+        # Fix Pivots
+        pivot = pivot_list[ind]
+        pivot_matrix = matrix_dictionary.get(ob, mathutils.Matrix())
+        pivot_matrix = mathutils.Matrix.Translation(pivot_matrix.to_3x3() @ -pivot)
+        if APPLY and not FOUND and ob.type == 'MESH':
             ob.data.transform(pivot_matrix)
+
 
 ##########
 # IMPORT #
@@ -1770,6 +1764,7 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
 
     # fixme, make unglobal, clear in case
     object_dictionary.clear()
+    parent_dictionary.clear()
     matrix_dictionary.clear()
     scn = context.scene
 
@@ -1799,6 +1794,7 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
 
     # fixme, make unglobal
     object_dictionary.clear()
+    parent_dictionary.clear()
     matrix_dictionary.clear()
 
     if UNITS:
