@@ -1729,7 +1729,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         pivot = pivot_list[ind]
         pivot_matrix = matrix_dictionary.get(ob, mathutils.Matrix())
         pivot_matrix = mathutils.Matrix.Translation(pivot_matrix.to_3x3() @ -pivot)
-        if APPLY and not FOUND and ob.type == 'MESH':
+        if APPLY_MATRIX and not FOUND and ob.type == 'MESH':
             ob.data.transform(pivot_matrix)
 
 
