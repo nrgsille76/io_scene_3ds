@@ -398,7 +398,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                        ContextMeshMaterials, ContextMesh_smooth):
 
         bmesh = bpy.data.meshes.new(contextObName)
-
         if ContextMesh_facels is None:
             ContextMesh_facels = []
 
@@ -1683,10 +1682,9 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
     # APPLY MATRIX transformation
     if APPLY_MATRIX:
-        for ob in object_list:
-            obj = object_dictionary.get(ob.name)
-            mtx = matrix_dictionary.get(ob.name)
-            if mtx and obj.type == 'MESH':
+        for ob, mtx in matrix_dictionary.items():
+            obj = object_dictionary.get(ob)
+            if obj.type == 'MESH':
                 obj.data.transform(mtx.inverted())
 
     # If hierarchy
