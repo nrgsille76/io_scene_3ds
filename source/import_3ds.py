@@ -1701,8 +1701,11 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
     # Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
+        idx = object_parent[ind]
         if ob is None:
             continue
+        elif idx == ROOT_OBJECT:
+            ob.parent = None
         elif ob.name in parent_dictionary.keys():
             kids = parent_dictionary.get(ob.name)
             for kid in kids:
@@ -1710,7 +1713,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 kid.parent = parent
             FOUND = True
         elif not FOUND:
-            idx = object_parent[ind]
             if idx not in object_dict:
                 parent = idx if idx != object_list.index(ob) else idx - 1
                 try:
