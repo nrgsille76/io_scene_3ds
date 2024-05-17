@@ -1680,56 +1680,50 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         putContextMesh(context, contextMesh_vertls, contextMesh_facels, contextMesh_flag,
                        contextMeshMaterials, contextMesh_smooth)
 
-    # APPLY MATRIX transformation
-    if APPLY_MATRIX:
-        for ob, mtx in matrix_dictionary.items():
-            obj = object_dictionary.get(ob)
-            if obj.type == 'MESH':
-                obj.data.transform(mtx.inverted())
-
     # If hierarchy
-    FOUND = False
     hierarchy = dict(zip(childs_list, parent_list))
     hierarchy.pop(None, ...)
+    FOUND = False if not hierarchy else True
     for idt, (child, parent) in enumerate(hierarchy.items()):
         child_obj = object_dictionary.get(child)
         parent_obj = object_dictionary.get(parent)
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects
-    # Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
-        idx = object_parent[ind]
         if ob is None:
             continue
-        elif idx == ROOT_OBJECT:
-            ob.parent = None
-        elif ob.name in parent_dictionary.keys():
+        pivot = pivot_list[ind]
+        parent = object_parent[ind]
+        trans_matrix = matrix_dictionary.get(ob.name, mathutils.Matrix())
+        if APPLY_MATRIX and ob.type == 'MESH':
+            ob.data.transform(trans_matrix.inverted())
+        if ob.name in parent_dictionary.keys():
             kids = parent_dictionary.get(ob.name)
             for kid in kids:
                 parent = object_dictionary.get(ob.name)
                 kid.parent = parent
             FOUND = True
         elif not FOUND:
-            if idx not in object_dict:
-                parent = idx if idx != object_list.index(ob) else idx - 1
+            if parent == ROOT_OBJECT:
+                ob.parent = None
+            elif parent not in object_dict:
+                parent = parent - 1 if parent == object_list.index(ob) else parent
                 try:
                     ob.parent = object_list[parent]
                 except Exception as exc:
                     print("\tIndexError:", exc)
             else:
                 try:  # get parent from node_id number
-                    ob.parent = object_dict.get(idx)
+                    ob.parent = object_dict.get(parent)
                 except:  # self to parent exception
                     pass
 
         # Fix Pivots
-        pivot = pivot_list[ind]
-        pivot_matrix = matrix_dictionary.get(ob, mathutils.Matrix())
-        pivot_matrix = mathutils.Matrix.Translation(pivot_matrix.to_3x3() @ -pivot)
-        if APPLY_MATRIX and not FOUND and ob.type == 'MESH':
+        pivot_matrix = mathutils.Matrix.Translation(trans_matrix.to_3x3() @ -pivot)
+        if APPLY_MATRIX and ob.type == 'MESH':
             ob.data.transform(pivot_matrix)
 
 
