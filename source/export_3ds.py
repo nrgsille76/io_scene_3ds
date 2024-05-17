@@ -1893,13 +1893,13 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
             operator.report({'WARNING'}, "Object %r can't be written into a 3DS file")
 
         # Export object node
-        if use_keyframes:
+        if use_keyframes and not use_hierarchy:
             kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
 
         i += i
 
     # Create chunks for all empties - only requires a object node
-    if use_keyframes:
+    if use_keyframes and not use_hierarchy:
         for ob in empty_objects:
             kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
 
