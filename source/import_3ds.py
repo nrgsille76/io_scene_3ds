@@ -1683,30 +1683,26 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
     # If hierarchy
     hierarchy = dict(zip(childs_list, parent_list))
     hierarchy.pop(None, ...)
-    FOUND = False if not hierarchy else True
     for idt, (child, parent) in enumerate(hierarchy.items()):
         child_obj = object_dictionary.get(child)
         parent_obj = object_dictionary.get(parent)
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects
+    # Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
             continue
-        pivot = pivot_list[ind]
         parent = object_parent[ind]
-        trans_matrix = matrix_dictionary.get(ob.name, mathutils.Matrix())
-        if APPLY_MATRIX and ob.type == 'MESH':
-            ob.data.transform(trans_matrix.inverted())
+        found = any(o for o in (l for l in parent_dictionary.values()))
         if ob.name in parent_dictionary.keys():
             kids = parent_dictionary.get(ob.name)
             for kid in kids:
-                parent = object_dictionary.get(ob.name)
-                kid.parent = parent
-            FOUND = True
-        elif not FOUND:
+                kid.parent = ob
+            found = True
+        elif not found:
             if parent == ROOT_OBJECT:
                 ob.parent = None
             elif parent not in object_dict:
@@ -1722,9 +1718,11 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                     pass
 
         # Fix Pivots
+        pivot = pivot_list[ind]
+        trans_matrix = matrix_dictionary.get(ob.name, mathutils.Matrix())
         pivot_matrix = mathutils.Matrix.Translation(trans_matrix.to_3x3() @ -pivot)
         if APPLY_MATRIX and ob.type == 'MESH':
-            ob.data.transform(pivot_matrix)
+            ob.data.transform(trans_matrix.inverted() @ pivot_matrix)
 
 
 ##########
