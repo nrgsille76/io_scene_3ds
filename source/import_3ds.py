@@ -1681,6 +1681,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                        contextMeshMaterials, contextMesh_smooth)
 
     # If hierarchy
+    found = any(o for o in (l for l in parent_dictionary.values()))
     hierarchy = dict(zip(childs_list, parent_list))
     hierarchy.pop(None, ...)
     for idt, (child, parent) in enumerate(hierarchy.items()):
@@ -1689,19 +1690,16 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects
-    # Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
             continue
         parent = object_parent[ind]
-        found = any(o for o in (l for l in parent_dictionary.values()))
         if ob.name in parent_dictionary.keys():
             kids = parent_dictionary.get(ob.name)
             for kid in kids:
                 kid.parent = ob
-            found = True
         elif not found:
             if parent == ROOT_OBJECT:
                 ob.parent = None
