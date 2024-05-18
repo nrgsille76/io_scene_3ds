@@ -1681,7 +1681,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                        contextMeshMaterials, contextMesh_smooth)
 
     # If hierarchy
-    found = any(o for o in (l for l in parent_dictionary.values()))
     hierarchy = dict(zip(childs_list, parent_list))
     hierarchy.pop(None, ...)
     for idt, (child, parent) in enumerate(hierarchy.items()):
@@ -1696,6 +1695,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if ob is None:
             continue
         parent = object_parent[ind]
+        found = ob in set().union(sum(parent_dictionary.values(), []))
         if ob.name in parent_dictionary.keys():
             kids = parent_dictionary.get(ob.name)
             for kid in kids:
@@ -1703,14 +1703,14 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         elif not found:
             if parent == ROOT_OBJECT:
                 ob.parent = None
-            elif parent not in object_dict:
-                parent = parent - 1 if parent == object_list.index(ob) else parent
-                try:
+            elif index not in object_dict:
+                parent = parent-1 if parent == object_list.index(ob) else parent
+                try:  # get parent from object list
                     ob.parent = object_list[parent]
                 except Exception as exc:
                     print("\tIndexError:", exc)
-            else:
-                try:  # get parent from node_id number
+            else:  # get parent from node_id number
+                try:
                     ob.parent = object_dict.get(parent)
                 except:  # self to parent exception
                     pass
@@ -1840,8 +1840,8 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
         for screen in bpy.data.screens:
             for area in screen.areas:
                 if area.type == 'VIEW_3D':
-                    area.spaces[0].clip_start = scale * 0.1
-                    area.spaces[0].clip_end = scale * 10000
+                    area.spaces[0].clip_start = max(scale * 0.1 * MEASURE, 0.01)
+                    area.spaces[0].clip_end = max(scale * 10000 * MEASURE, 1000)
 
     context.window.cursor_set('DEFAULT')
     print(" done in %.4f sec." % (time.time() - duration))
