@@ -1703,7 +1703,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         elif not found:
             if parent == ROOT_OBJECT:
                 ob.parent = None
-            elif index not in object_dict:
+            elif parent not in object_dict:
                 parent = parent-1 if parent == object_list.index(ob) else parent
                 try:  # get parent from object list
                     ob.parent = object_list[parent]
