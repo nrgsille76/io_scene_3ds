@@ -1129,7 +1129,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 distcuepath = nodes.new(type='ShaderNodeLightPath')
             distcue_node.location = (-940, 10)
             distcuepath.location = (-1140, 70)
-            camera_data.location = (-1340, 170)
+            camera_data.location = (-1340, 165)
             raysource = distcuepath.outputs[7] if distcue_mix else distcuepath.outputs[0]
             raytarget = distcue_mix.inputs[0] if distcue_mix else nodes['Background'].inputs[1]
             links.new(camera_data.outputs[1], distcue_node.inputs[1])
