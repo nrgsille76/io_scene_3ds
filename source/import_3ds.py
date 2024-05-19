@@ -1597,10 +1597,11 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 new_chunk.bytes_read += SZ_4FLOAT
                 keyframe_rotation[nframe] = rotation
             rad, axis_x, axis_y, axis_z = keyframe_rotation[0]
-            child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler()  # Why negative?
+            cpt = matrix_dictionary.get(child.name, child.matrix_world).to_euler()
+            child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler('XYZ', cpt)  # Why negative?
             for keydata in keyframe_rotation.items():
                 rad, axis_x, axis_y, axis_z = keydata[1]
-                child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler()
+                child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler('XYZ', cpt)
                 if hierarchy == ROOT_OBJECT:
                     child.rotation_euler.rotate(CONVERSE)
                 if not tflags & 0x100:  # Flag 0x100 unlinks X axis
@@ -1689,7 +1690,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects
+    # Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
