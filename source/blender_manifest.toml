@@ -9,7 +9,7 @@ permissions = ["files"]
 tags = ["Import-Export"]
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-2.0-or-later"]
-website = "https://projects.blender.org/extensions/io_scene_3ds"
+website = "https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/manual/scene_3ds.rst"
 copyright = [
     "2024 Bob Holcomb",
     "2024 Campbell Barton",
