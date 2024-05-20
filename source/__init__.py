@@ -1,7 +1,13 @@
 # SPDX-FileCopyrightText: 2011-2023 Blender Foundation
-#                         2022-2024 Sebastian Schrand
+#                         2020-2024 Sebastian Schrand
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
+
+
+__author__ = "Sebastian Sille <nrgsille@gmail.com>"
+__version__ = "2.6.0"
+__date__ = "24 Sep 2020"
+
 
 from bpy_extras.io_utils import (
     ImportHelper,
