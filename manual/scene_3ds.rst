@@ -5,7 +5,7 @@ Autodesk 3DS
 .. reference::
 
    :Category: Import-Export
-   :Menu: :menuselection:`File --> Import/Export --> 3D Studio (.3ds)`
+   :Menu: :menuselection:`File --> Import/Export --> Autodesk 3DS (.3ds)`
    :Version: 2.6.0
    :Blender: 4.2
    :Authors: Bob Holcomb, Campbell Barton, Sebastian Schrand
