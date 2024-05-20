@@ -1,4 +1,4 @@
-# Autodesk 3DS Format (.3ds)
+# Autodesk 3D Studio (.3ds)
 
 
 ---  
@@ -8,7 +8,7 @@
 &nbsp;&nbsp; Import-Export  
 
 **Menu**  
-&nbsp;&nbsp; `File --> Import/Export --> 3D Studio (.3ds)`  
+&nbsp;&nbsp; `File --> Import/Export --> Autodesk 3DS (.3ds)`  
 
 **Version**  
 &nbsp;&nbsp; 2.6.0  
