@@ -937,18 +937,16 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             bitmap_mix.inputs[2].default_value = nodes['Background'].inputs[0].default_value
             bitmapnode.image = load_image(bitmap_name, dirname, place_holder=False, recursive=IMAGE_SEARCH, check_existing=True)
             bitmap_mix.inputs[0].default_value = 0.5 if bitmapnode.image is not None else 1.0
+            coordinate = nodes.get("Texture Coordinate", nodes.new(type='ShaderNodeTexCoord'))
             bitmapnode.location = (-520, 400)
             bitmap_mix.location = (-200, 360)
             bitmapping.location = (-740, 400)
-            coordinates = next((wn for wn in nodes if wn.type == 'TEX_COORD'), False)
+            coordinate.location = (-1340, 400)
             links.new(bitmap_mix.outputs[0], nodes['Background'].inputs[0])
             links.new(bitmapnode.outputs[0], bitmap_mix.inputs[1])
             links.new(bitmapping.outputs[0], bitmapnode.inputs[0])
-            if not coordinates:
-                coordinates = nodes.new(type='ShaderNodeTexCoord')
-                coordinates.location = (-1340, 400)
             if not bitmapping.inputs['Vector'].is_linked:
-                links.new(coordinates.outputs[0], bitmapping.inputs[0])
+                links.new(coordinate.outputs[0], bitmapping.inputs[0])
             new_chunk.bytes_read += read_str_len
 
         # If gradient chunk:
@@ -965,9 +963,9 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             layerweight = nodes.new(type='ShaderNodeLayerWeight')
             conversion = nodes.new(type='ShaderNodeMath')
             normalnode = nodes.new(type='ShaderNodeNormal')
-            coordinate = next((wn for wn in nodes if wn.type == 'TEX_COORD'), False)
+            mappingnode = nodes.get("Mapping", False)
+            coordinates = nodes.get("Texture Coordinate", False)
             backgroundmix = next((wn for wn in nodes if wn.type in {'MIX', 'MIX_RGB'}), False)
-            mappingnode = next((wn for wn in nodes if wn.type == 'MAPPING'), False)
             conversion.location = (-740, -60)
             layerweight.location = (-940, 170)
             normalnode.location = (-1140, 300)
@@ -981,16 +979,16 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             links.new(normalnode.outputs[1], conversion.inputs[2])
             links.new(normalnode.outputs[0], layerweight.inputs[1])
             links.new(normalnode.outputs[1], layerweight.inputs[0])
-            if not coordinate:
-                coordinate = nodes.new(type='ShaderNodeTexCoord')
-                coordinate.location = (-1340, 400)
-            links.new(coordinate.outputs[6], normalnode.inputs[0])
+            if not coordinates:
+                coordinates = nodes.new(type='ShaderNodeTexCoord')
+                coordinates.location = (-1340, 400)
+            links.new(coordinates.outputs[6], normalnode.inputs[0])
             if backgroundmix:
                 links.new(gradientnode.outputs[0], backgroundmix.inputs[2])
             else:
                 links.new(gradientnode.outputs[0], nodes['Background'].inputs[0])
             if mappingnode and not mappingnode.inputs['Vector'].is_linked:
-                links.new(coordinate.outputs[0], mappingnode.inputs[0])
+                links.new(coordinates.outputs[0], mappingnode.inputs[0])
             gradientnode.color_ramp.elements.new(read_float(new_chunk))
             read_chunk(file, temp_chunk)
             if temp_chunk.ID == COLOR_F:
@@ -1030,7 +1028,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             fognode = nodes.new(type='ShaderNodeVolumeAbsorption')
             fognode.label = "Fog"
             fognode.location = (10, 20)
-            volumemix = next((wn for wn in worldnodes if wn.name == "Volume" and wn.type in {'ADD_SHADER', 'MIX_SHADER'}), False)
+            volumemix = nodes.get("Volume", False)
             if volumemix:
                 links.new(fognode.outputs[0], volumemix.inputs[1])
             else:
@@ -1066,11 +1064,11 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             nodes = contextWorld.node_tree.nodes
             worldout = nodes.get("World Output")
             worldfog = worldout.inputs[1]
-            litepath = nodes.new(type='ShaderNodeLightPath')
             layerfog = nodes.new(type='ShaderNodeVolumeScatter')
-            fognode = next((wn for wn in worldnodes if wn.type == 'VOLUME_ABSORPTION'), False)
+            litepath = nodes.get("Light Path", nodes.new('ShaderNodeLightPath'))
+            fognode = nodes.get("Volume Absorption", False)
             if fognode:
-                cuenode = next((wn for wn in worldnodes if wn.type == 'MAP_RANGE'), False)
+                cuenode = nodes.get("Map Range", False)
                 mxvolume = nodes.new(type='ShaderNodeMixShader')
                 mxvolume.label = mxvolume.name = "Volume"
                 mxvolume.location = (220, 0)
@@ -1123,8 +1121,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             camera_data = nodes.new(type='ShaderNodeCameraData')
             distcue_node.label = "Distance Cue"
             distcue_node.clamp = False
-            distcue_mix = next((wn for wn in worldnodes if wn.name == "Volume" and wn.type == 'MIX_SHADER'), False)
-            distcuepath = next((wn for wn in worldnodes if wn.type == 'LIGHT_PATH'), False)
+            distcue_mix = nodes.get("Volume", False)
+            distcuepath = nodes.get("Light Path", False)
             if not distcuepath:
                 distcuepath = nodes.new(type='ShaderNodeLightPath')
             distcue_node.location = (-940, 10)
@@ -1415,7 +1413,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                     raymixer.inputs[3].name = "Ambient"
                     raymixer.inputs[2].name = "Background"
                     mixshade.label = mixshade.name = "Surface"
-                    litepath = next((n for n in nodes if n.type == 'LIGHT_PATH'), False)
+                    litepath = nodes.get("Light Path", False)
                     ambinode.inputs[0].default_value[:3] = child.color
                     if not litepath:
                         litepath = nodes.new('ShaderNodeLightPath')
@@ -1499,8 +1497,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             tree = child.data.node_tree
             emitnode = tree.nodes.get("Emission")
             emitnode.inputs[0].default_value[:3] = child.data.color
-            colornode = next((nd for nd in tree.nodes if nd.type == 'RGB'), False)
-            lightfall = next((nd for nd in tree.nodes if nd.type == 'LIGHT_FALLOFF'), False)
+            colornode = tree.nodes.get("RGB", False)
+            lightfall = tree.nodes.get("Light Falloff", False)
             if not colornode:
                 colornode = tree.nodes.new('ShaderNodeRGB')
                 colornode.location = (-380, 60)
