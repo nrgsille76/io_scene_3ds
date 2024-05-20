@@ -14,7 +14,7 @@
         "SPDX:GPL-2.0-or-later"
       ],
       "blender_version_min": "4.2.0",
-      "website": "https://projects.blender.org/extensions/io_scene_3ds",
+      "website": "https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/manual/scene_3ds.rst",
       "copyright": [
         "2024 Bob Holcomb",
         "2024 Campbell Barton",
@@ -26,7 +26,7 @@
       "tags": [
         "Import-Export"
       ],
-      "archive_url": "./autodesk_3ds.zip",
+      "archive_url": "https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/package/autodesk_3ds.zip",
       "archive_size": 35742,
       "archive_hash": "sha256:3980eb540cb7239c492fbc622ade8465dbe6cee1abc56ef2d240e53bc15250fc"
     }
