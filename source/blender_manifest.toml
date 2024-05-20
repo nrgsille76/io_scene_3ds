@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
-id = "autodesk_3ds_format"
-name = "Autodesk 3DS Format (.3ds)"
+id = "autodesk_3ds"
+name = "Autodesk 3D Studio (.3ds)"
 version = "2.6.0"
 tagline = "3DS Import/Export meshes, textures, cameras, lamps & animation"
 maintainer = "Sebastian Sille"
