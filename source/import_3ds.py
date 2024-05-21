@@ -489,7 +489,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
     CreateBlenderObject = False
     CreateCameraObject = False
     CreateLightObject = False
-    CreateTrackData = False
 
     CreateWorld = 'WORLD' in FILTER
     CreateMesh = 'MESH' in FILTER
@@ -658,8 +657,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             nframe = read_long(track_chunk)
             nflags = read_short(track_chunk)
             for f in range(bin(nflags)[-5:].count('1')):
-                temp_data = file.read(SZ_FLOAT)  # Check for spline terms
-                track_chunk.bytes_read += SZ_FLOAT
+                read_float(track_chunk)  # Check for spline terms
             trackdata = read_float_array(track_chunk)
             keyframe_data[nframe] = trackdata
         return keyframe_data
@@ -672,8 +670,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             nframe = read_long(track_chunk)
             nflags = read_short(track_chunk)
             for f in range(bin(nflags)[-5:].count('1')):
-                temp_data = file.read(SZ_FLOAT)  # Check for spline terms
-                track_chunk.bytes_read += SZ_FLOAT
+                read_float(track_chunk) # Check for spline terms
             angle = read_float(track_chunk)
             keyframe_angle[nframe] = math.radians(angle)
         return keyframe_angle
@@ -1127,7 +1124,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 distcuepath = nodes.new(type='ShaderNodeLightPath')
             distcue_node.location = (-940, 10)
             distcuepath.location = (-1140, 70)
-            camera_data.location = (-1340, 165)
+            camera_data.location = (-1340, 166)
             raysource = distcuepath.outputs[7] if distcue_mix else distcuepath.outputs[0]
             raytarget = distcue_mix.inputs[0] if distcue_mix else nodes['Background'].inputs[1]
             links.new(camera_data.outputs[1], distcue_node.inputs[1])
@@ -1366,6 +1363,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             tracking = str([kf for kf,ck in globals().items() if ck == new_chunk.ID][0]).split("_")[-1]
             spotting = str([kf for kf,ck in globals().items() if ck == new_chunk.ID][0]).split("_")[-2]
             object_id = hierarchy = ROOT_OBJECT
+            trackposition.clear()
             child = None
             if not CreateWorld and tracking == 'AMBIENT':
                 skip_to_end(file, new_chunk)
@@ -1374,7 +1372,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             if not CreateCamera and tracking == 'CAMERA':
                 skip_to_end(file, new_chunk)
 
-        elif CreateTrackData and new_chunk.ID in {KF_TARGET_CAMERA, KF_TARGET_LIGHT}:
+        elif new_chunk.ID in {KF_TARGET_CAMERA, KF_TARGET_LIGHT}:
             tracktype = str([kf for kf,ck in globals().items() if ck == new_chunk.ID][0]).split("_")[1]
             tracking = str([kf for kf,ck in globals().items() if ck == new_chunk.ID][0]).split("_")[-1]
             child = None
@@ -1522,9 +1520,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             keyframe_data = {}
             keyframe_data[0] = child.location[:]
             child.location = mathutils.Vector(read_track_data(new_chunk)[0])
-            if child.type in {'LIGHT', 'CAMERA'}:
-                trackposition[0] = child.location
-                CreateTrackData = True
+            if tracking == 'CAMERA' or spotting == 'SPOT':
+                trackposition.setdefault(child.name, []).append((0, child.location))
             if contextTrack_flag & 0x8:  # Flag 0x8 locks X axis
                 child.lock_location[0] = True
             if contextTrack_flag & 0x10:  # Flag 0x10 locks Y axis
@@ -1532,7 +1529,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             if contextTrack_flag & 0x20:  # Flag 0x20 locks Z axis
                 child.lock_location[2] = True
             for keydata in keyframe_data.items():
-                trackposition[keydata[0]] = keydata[1]  # Keep track to position for target calculation
+                trackposition.setdefault(child.name, []).append((keydata[0], keydata[1]))  # Keep track to position
                 child.location = apply_constrain(keydata[1]) if hierarchy == ROOT_OBJECT else mathutils.Vector(keydata[1])
                 if MEASURE != 1.0:
                     child.location = child.location * MEASURE
@@ -1549,16 +1546,16 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG and tracktype == 'TARGET':  # Target position
             keyframe_data = {}
             location = child.location
-            keyframe_data[0] = trackposition[0]
+            keyframe_data[0] = dict(trackposition.get(child.name, [(0, location)]))[0]
             target = mathutils.Vector(read_track_data(new_chunk)[0])
             direction = calc_target(location, target)
             child.rotation_euler.x = direction[0]
             child.rotation_euler.z = direction[1]
             for keydata in keyframe_data.items():
-                track = trackposition.get(keydata[0], child.location)
-                locate = mathutils.Vector(track)
+                tracks = dict(trackposition.get(child.name, [(0, location)]))
+                locate = tracks.get(keydata[0], location)
                 target = mathutils.Vector(keydata[1])
-                direction = calc_target(locate, target)
+                direction = calc_target(mathutils.Vector(locate), target)
                 rotate = mathutils.Euler((direction[0], 0.0, direction[1]), 'XYZ').to_matrix()
                 scale = mathutils.Vector.Fill(3, (CONSTRAIN * 0.1)) if CONSTRAIN != 0.0 else child.scale
                 transformation = mathutils.Matrix.LocRotScale(locate, rotate, scale)
@@ -1688,8 +1685,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects
-    # Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
