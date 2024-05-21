@@ -636,7 +636,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         plane_x = plane.x if check_sign else -1 * plane.x
         plane_y = plane.y if check_sign else -1 * plane.y
         sign_xy = plane_x if check_axes else plane.y
-        axis_xy = plane_y if check_axes else plane.x
+        axis_xy = plane_y if check_axes else plane_x
         invert = abs(loca.x) < abs(target.x) and not check_sign
         hyp = math.sqrt(pow(plane.x,2) + pow(plane.y,2))
         dia = math.sqrt(pow(hyp,2) + pow(plane.z,2))
