@@ -637,13 +637,15 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         plane_y = plane.y if check_sign else -1 * plane.y
         sign_xy = plane_x if check_axes else plane.y
         axis_xy = plane_y if check_axes else plane.x
+        invert = abs(loca.x) < abs(target.x) and not check_sign
         hyp = math.sqrt(pow(plane.x,2) + pow(plane.y,2))
         dia = math.sqrt(pow(hyp,2) + pow(plane.z,2))
         yaw = math.atan2(math.copysign(hyp, sign_xy), axis_xy)
         bow = math.acos(hyp / dia) if dia != 0 else 0
         turn = angle - yaw if check_sign else angle + yaw
         tilt = angle - bow if loca.z > target.z else angle + bow
-        pan = yaw if check_axes else turn
+        inv = yaw if check_axes else turn
+        pan = inv if invert else -1 * inv
         return tilt, pan
 
     def read_track_data(track_chunk):
