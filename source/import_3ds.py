@@ -1337,8 +1337,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 contextCamera.rotation_euler.z = direction[1]
                 contextCamera.data.lens = read_float(new_chunk)  # Focal length
         elif CreateCameraObject and new_chunk.ID == OBJECT_CAM_RANGES:  # Range
-            camrange = read_float(new_chunk)
-            startrange = camrange if camrange >= 0.01 else 0.1
+            camrange = max(read_float(new_chunk), 0.01)
+            startrange = camrange if camrange < 50 else camrange * 0.001
             contextCamera.data.clip_start = startrange * CONSTRAIN
             contextCamera.data.clip_end = read_float(new_chunk) * CONSTRAIN
         elif CreateCameraObject and new_chunk.ID == OBJECT_HIERARCHY:  # Hierarchy
