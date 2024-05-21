@@ -633,8 +633,9 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         angle = math.radians(90)  # Target triangulation
         check_sign = abs(loca.y) < abs(target.y)
         check_axes = abs(loca.x - target.x) > abs(loca.y - target.y)
+        plane_x = plane.x if check_sign else -1 * plane.x
         plane_y = plane.y if check_sign else -1 * plane.y
-        sign_xy = plane.x if check_axes else plane.y
+        sign_xy = plane_x if check_axes else plane.y
         axis_xy = plane_y if check_axes else plane.x
         hyp = math.sqrt(pow(plane.x,2) + pow(plane.y,2))
         dia = math.sqrt(pow(hyp,2) + pow(plane.z,2))
@@ -1685,7 +1686,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects
+    # Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
