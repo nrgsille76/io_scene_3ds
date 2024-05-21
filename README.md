@@ -11,7 +11,7 @@
 &nbsp;&nbsp; `File --> Import/Export --> Autodesk 3DS (.3ds)`  
 
 **Version**  
-&nbsp;&nbsp; 2.6.0  
+&nbsp;&nbsp; 2.6.1   
 
 **Authors**  
 &nbsp;&nbsp; Bob Holcomb, Campbell Barton, Sebastian Schrand  
@@ -29,10 +29,9 @@ The add-on was part of the [Blender bundled add-ons](https://docs.blender.org/ma
 It is also available as an extension on the [Extensions platform](https://extensions.blender.org/add-ons/autodesk-3ds-format).  
 <br>
 
+The manual is no longer available on [Blender manual website](https://docs.blender.org/manual/en/dev/addons/import_export/) instead it has been moved to this repository.  
 
-Prompt from Blender directory to build a new version of the extension:
-* `blender -c extension build --source-dir=./io_scene_3ds/source`
+-->[Autodesk 3DS Import-Export manual](https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/manual/scene_3ds.rst)<--
+
 
 ---
-
-For more information about building extensions refer to the [documentation](https://docs.blender.org/manual/en/dev/extensions/getting_started.html).
