@@ -1338,9 +1338,10 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 contextCamera.data.lens = read_float(new_chunk)  # Focal length
         elif CreateCameraObject and new_chunk.ID == OBJECT_CAM_RANGES:  # Range
             camrange = max(read_float(new_chunk), 0.01)
+            endrange = max(read_float(new_chunk), 100)
             startrange = camrange if camrange < 50 else camrange * 0.001
             contextCamera.data.clip_start = startrange * CONSTRAIN
-            contextCamera.data.clip_end = read_float(new_chunk) * CONSTRAIN
+            contextCamera.data.clip_end = endrange* CONSTRAIN
         elif CreateCameraObject and new_chunk.ID == OBJECT_HIERARCHY:  # Hierarchy
             child_id = get_hierarchy(new_chunk)
         elif CreateCameraObject and new_chunk.ID == OBJECT_PARENT:
@@ -1688,8 +1689,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         if child_obj and parent_obj is not None:
             child_obj.parent = parent_obj
 
-    # Assign parents to objects
-    # Check if we need to assign first because doing so recalcs the depsgraph
+    # Assign parents to objects. Check if we need to assign first because doing so recalcs the depsgraph
     parent_dictionary.pop(None, ...)
     for ind, ob in enumerate(object_list):
         if ob is None:
