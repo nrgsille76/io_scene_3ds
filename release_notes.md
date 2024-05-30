@@ -108,3 +108,7 @@ All backporting changes are listed in the [commit details](https://projects.blen
   (blender/blender-addons@e8c1acd430)
 - Added distance cue import and export.
   (blender/blender-addons@0a2b786336, blender/blender-addons@f139aea3f6)
+
+### Version 2.6.1
+
+- Improved importing instanced objects. (extensions/io_scene_3ds@193e1355ea)
