@@ -1,15 +1,15 @@
 schema_version = "1.0.0"
 id = "autodesk_3ds_format"
 name = "Autodesk 3D Studio (.3ds)"
-version = "2.6.0"
-tagline = "3DS Import/Export meshes, textures, cameras, lamps & animation"
+version = "2.6.1"
+tagline = "Import/Export 3DS meshes, materials, textures, cameras, lights, ambient & animations"
 maintainer = "Sebastian Sille"
 type = "add-on"
 permissions = ["files"]
 tags = ["Import-Export"]
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-2.0-or-later"]
-website = "https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/manual/scene_3ds.rst"
+website = "https://projects.blender.org/extensions/io_scene_3ds/wiki"
 copyright = [
     "2024 Bob Holcomb",
     "2024 Campbell Barton",
