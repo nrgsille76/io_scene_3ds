@@ -30,7 +30,7 @@ It is also available as an extension on the [Extensions platform](https://extens
 <br>
 
 The manual is no longer available on [Blender manual website](https://docs.blender.org/manual/en/dev/addons/import_export/) instead it has been moved to this repository.  
--->[Autodesk 3DS IO manual](https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/manual/scene_3ds.rst)<--  
+-->[Autodesk 3DS IO manual](https://projects.blender.org/extensions/io_scene_3ds/wiki)<--  
 
 Add on release notes are no longer available on [Blender developer docs](https://developer.blender.org/docs/release_notes) instead they can be found here:  
 -->[Autodesk 3DS IO release notes](https://projects.blender.org/extensions/io_scene_3ds/src/branch/main/release_notes.md)<--
