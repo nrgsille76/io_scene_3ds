@@ -5,7 +5,6 @@ version = "2.6.4"
 tagline = "Import-Export 3DS scenes, objects, cameras, lights & animations"
 maintainer = "Sebastian Sille"
 type = "add-on"
-files = "Import-Export Autodesk 3DS files"
 tags = ["Import-Export", "Scene", "Object", "Camera", "Lighting", "Animation"]
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-2.0-or-later"]
@@ -15,3 +14,5 @@ copyright = [
     "2024 Campbell Barton",
     "2024 Sebastian Schrand",
 ]
+[permissions]
+files = "Import-Export Autodesk 3DS files"
