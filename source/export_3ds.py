@@ -1836,8 +1836,8 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
     name_id = {}
 
     for ob, data, matrix in mesh_objects:
-        translation[ob.name] = mtx_scale @ ob.location
-        rotation[ob.name] = ob.rotation_euler
+        translation[ob.name] = mtx_scale @ matrix.to_translation()
+        rotation[ob.name] = matrix.to_euler()
         scale[ob.name] = mtx_scale.copy()
         name_id[ob.name] = len(name_id)
         object_id[ob.name] = len(object_id)
