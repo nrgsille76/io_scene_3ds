@@ -1066,7 +1066,7 @@ def make_mesh_chunk(ob, mesh, matrix, materialDict, translation):
         obj_translate = matrix.to_translation()
 
     else:  # Calculate child matrix translation relative to parent
-        obj_translate = translation[ob.name].cross(-1 * translation[ob.parent.name])
+        obj_translate = translation[ob.parent.name]
 
     matrix_chunk.add_variable("xx", _3ds_float(obj_matrix[0].to_tuple(6)[0]))
     matrix_chunk.add_variable("xy", _3ds_float(obj_matrix[0].to_tuple(6)[1]))
@@ -1357,17 +1357,11 @@ def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transf
             obj_morph_smooth.add_variable("angle", _3ds_float(round(ob.modifiers['Smooth by Angle']['Input_1'], 6)))
             obj_node.add_subchunk(obj_morph_smooth)
 
-    # Add track chunks for position, rotation, size
-    ob_scale = scale[name]  # and collect masterscale
-    if parent is None or (parent.name not in name_id):
-        ob_pos = translation[name]
-        ob_rot = rotation[name]
-        ob_size = ob.scale
-
-    else:  # Calculate child position and rotation of the object center, no scale applied
-        ob_pos = translation[name] - translation[parent.name]
-        ob_rot = rotation[name].to_quaternion().cross(rotation[parent.name].to_quaternion().copy().inverted()).to_euler()
-        ob_size = mathutils.Vector((1.0, 1.0, 1.0))
+    # Add track chunks for position, rotation, size and collect masterscale
+    ob_scale = scale[name]
+    ob_pos = translation[name]
+    ob_rot = rotation[name]
+    ob_size = ob.scale
 
     obj_node.add_subchunk(make_track_chunk(POS_TRACK_TAG, ob, ob_pos, ob_rot, ob_scale))
 
@@ -1836,8 +1830,8 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
     name_id = {}
 
     for ob, data, matrix in mesh_objects:
-        translation[ob.name] = mtx_scale @ matrix.to_translation()
-        rotation[ob.name] = matrix.to_euler()
+        translation[ob.name] = mtx_scale @ ob.location
+        rotation[ob.name] = ob.rotation_euler
         scale[ob.name] = mtx_scale.copy()
         name_id[ob.name] = len(name_id)
         object_id[ob.name] = len(object_id)
