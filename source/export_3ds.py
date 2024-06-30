@@ -896,16 +896,11 @@ def remove_face_uv(verts, tri_list):
     # For each face uv coordinate, add it to the UniqueList of the vertex
     for tri in tri_list:
         for i in range(3):
-            # Store the index into the UniqueList for future reference
-            # offset.append(uv_list[tri.vertex_index[i]].add(_3ds_point_uv(tri.faceuvs[i])))
-
             context_uv_vert = unique_uvs[tri.vertex_index[i]]
             uvkey = tri.faceuvs[i]
             offset_index__uv_3ds = context_uv_vert.get(uvkey)
-
             if not offset_index__uv_3ds:
                 offset_index__uv_3ds = context_uv_vert[uvkey] = len(context_uv_vert), _3ds_point_uv(uvkey)
-
             tri.offset[i] = offset_index__uv_3ds[0]
 
     # At this point each vertex has a UniqueList containing every uv coord associated with it only once
@@ -917,7 +912,6 @@ def remove_face_uv(verts, tri_list):
     index_list = []
     for i, vert in enumerate(verts):
         index_list.append(vert_index)
-
         pt = _3ds_point_3d(vert.co)  # reuse, should be ok
         uvmap = [None] * len(unique_uvs[i])
         for ii, uv_3ds in unique_uvs[i].values():
@@ -930,7 +924,6 @@ def remove_face_uv(verts, tri_list):
         # Add uv's in the correct order and add coordinates to the uv array
         for uv_3ds in uvmap:
             uv_array.add(uv_3ds)
-
         vert_index += len(unique_uvs[i])
 
     # Make sure the triangle vertex indices now refer to the new vertex list
@@ -962,21 +955,17 @@ def make_faces_chunk(tri_list, mesh, materialDict):
         unique_mats = {}
         for i, tri in enumerate(tri_list):
             face_list.add(_3ds_face(tri.vertex_index, tri.flag))
-
             if materials:
                 ma = materials[tri.ma]
                 if ma:
                     ma = ma.name
-
             img = tri.image
-
             try:
                 context_face_array = unique_mats[ma, img][1]
             except:
                 name_str = ma if ma else "None"
                 context_face_array = _3ds_array()
                 unique_mats[ma, img] = _3ds_string(sane_name(name_str)), context_face_array
-
             context_face_array.add(_3ds_ushort(i))
 
         face_chunk.add_variable("faces", face_list)
@@ -1030,7 +1019,7 @@ def make_uv_chunk(uv_array):
     return uv_chunk
 
 
-def make_mesh_chunk(ob, mesh, matrix, materialDict, translation):
+def make_mesh_chunk(ob, mesh, matrix, materialDict):
     """Make a chunk out of a Blender mesh."""
 
     # Extract the triangles from the mesh
@@ -1061,12 +1050,7 @@ def make_mesh_chunk(ob, mesh, matrix, materialDict, translation):
     # Create transformation matrix chunk
     matrix_chunk = _3ds_chunk(OBJECT_TRANS_MATRIX)
     obj_matrix = matrix.transposed().to_3x3()
-
-    if ob.parent is None or (ob.parent.name not in translation):
-        obj_translate = matrix.to_translation()
-
-    else:  # Calculate child matrix translation relative to parent
-        obj_translate = translation[ob.parent.name]
+    obj_translate = matrix.to_translation()
 
     matrix_chunk.add_variable("xx", _3ds_float(obj_matrix[0].to_tuple(6)[0]))
     matrix_chunk.add_variable("xy", _3ds_float(obj_matrix[0].to_tuple(6)[1]))
@@ -1134,7 +1118,6 @@ def make_track_chunk(ID, ob, ob_pos, ob_rot, ob_size):
         action = ob.animation_data.action
         if action.fcurves:
             fcurves = action.fcurves
-            fcurves.update()
             kframes = [kf.co[0] for kf in [fc for fc in fcurves if fc is not None][0].keyframe_points]
             nkeys = len(kframes)
             if not 0 in kframes:
@@ -1190,7 +1173,6 @@ def make_track_chunk(ID, ob, ob_pos, ob_rot, ob_size):
         action = ob.data.animation_data.action
         if action.fcurves:
             fcurves = action.fcurves
-            fcurves.update()
             kframes = [kf.co[0] for kf in [fc for fc in fcurves if fc is not None][0].keyframe_points]
             nkeys = len(kframes)
             if not 0 in kframes:
@@ -1274,7 +1256,7 @@ def make_track_chunk(ID, ob, ob_pos, ob_rot, ob_size):
     return track_chunk
 
 
-def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform):
+def make_object_node(ob, position, rotation, scale, name_id, use_apply_transform):
     """Make a node chunk for a Blender object. Takes Blender object as parameter.
        Blender Empty objects are converted to dummy nodes."""
 
@@ -1339,8 +1321,8 @@ def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transf
         obj_node.add_subchunk(obj_instance_name_chunk)
 
     if ob.type == 'MESH' or ob.type in EMPTYS:  # Add a pivot point at the object center
-        center_pos = mathutils.Vector((0.0, 0.0, 0.0))
-        pivot_pos = (translation[name]) if use_apply_transform else center_pos
+        center_pos = position[name] if ob.type in EMPTYS else mathutils.Vector((0, 0, 0))
+        pivot_pos = center_pos if use_apply_transform else -position[name]
         obj_pivot_chunk = _3ds_chunk(OBJECT_PIVOT)
         obj_pivot_chunk.add_variable("pivot", _3ds_point_3d(pivot_pos))
         obj_node.add_subchunk(obj_pivot_chunk)
@@ -1359,9 +1341,15 @@ def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transf
 
     # Add track chunks for position, rotation, size and collect masterscale
     ob_scale = scale[name]
-    ob_pos = translation[name]
-    ob_rot = rotation[name]
-    ob_size = ob.scale
+    if parent is None or (parent.name not in name_id):
+        ob_pos = position[name] if use_apply_transform else mathutils.Vector((0, 0, 0))
+        ob_rot = rotation[name] if use_apply_transform else mathutils.Euler((0, 0, 0), 'XYZ')
+        ob_size = ob.scale
+
+    else:  # Use parent position and rotation as object center, no scale applied
+        ob_pos = position[name] if use_apply_transform else position[parent.name]
+        ob_rot = rotation[name] if use_apply_transform else rotation[parent.name]
+        ob_size = mathutils.Vector((1.0, 1.0, 1.0))
 
     obj_node.add_subchunk(make_track_chunk(POS_TRACK_TAG, ob, ob_pos, ob_rot, ob_scale))
 
@@ -1381,7 +1369,7 @@ def make_object_node(ob, translation, rotation, scale, name_id, use_apply_transf
     return obj_node
 
 
-def make_target_node(ob, translation, rotation, scale, name_id):
+def make_target_node(ob, position, rotation, scale, name_id):
     """Make a target chunk for light and camera objects."""
 
     name = ob.name
@@ -1408,7 +1396,7 @@ def make_target_node(ob, translation, rotation, scale, name_id):
     tar_node.add_subchunk(tar_node_header_chunk)
 
     # Calculate target position
-    ob_pos = translation[name]
+    ob_pos = position[name]
     ob_rot = rotation[name]
     ob_scale = scale[name]
     target_pos = calc_target(ob_pos, ob_rot.x, ob_rot.z)
@@ -1420,7 +1408,6 @@ def make_target_node(ob, translation, rotation, scale, name_id):
         action = ob.animation_data.action
         if action.fcurves:
             fcurves = action.fcurves
-            fcurves.update()
             kframes = [kf.co[0] for kf in [fc for fc in fcurves if fc is not None][0].keyframe_points]
             nkeys = len(kframes)
             if not 0 in kframes:
@@ -1681,7 +1668,6 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
                 if data.uv_layers:
                     if not ma_ls:
                         ma = ma_name = None
-
                     for f, uf in zip(data.polygons, data.uv_layers.active.data):
                         if ma_ls:
                             ma_index = f.material_index
@@ -1693,9 +1679,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
                         img = get_uv_image(ma)
                         img_name = None if img is None else img.name
-
                         materialDict.setdefault((ma_name, img_name), (ma, img))
-
                 else:
                     for ma in ma_ls:
                         if ma:  # Material may be None so check its not
@@ -1820,37 +1804,35 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
         if use_keyframes and world.animation_data or (world.node_tree and world.node_tree.animation_data):
             kfdata.add_subchunk(make_ambient_node(world))
 
-    # Collect translation for transformation matrix
-    translation = {}
-    rotation = {}
-    scale = {}
-
     # Give all objects a unique ID and build a dictionary from object name to object id
     object_id = {}
     name_id = {}
+    position = {}
+    rotation = {}
+    scale = {}
 
     for ob, data, matrix in mesh_objects:
-        translation[ob.name] = mtx_scale @ ob.location
+        position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
         scale[ob.name] = mtx_scale.copy()
         name_id[ob.name] = len(name_id)
         object_id[ob.name] = len(object_id)
 
     for ob in empty_objects:
-        translation[ob.name] = mtx_scale @ ob.location
+        position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
         scale[ob.name] = mtx_scale.copy()
         name_id[ob.name] = len(name_id)
 
     for ob in light_objects:
-        translation[ob.name] = mtx_scale @ ob.location
+        position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
         scale[ob.name] = mtx_scale.copy()
         name_id[ob.name] = len(name_id)
         object_id[ob.name] = len(object_id)
 
     for ob in camera_objects:
-        translation[ob.name] = mtx_scale @ ob.location
+        position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
         scale[ob.name] = mtx_scale.copy()
         name_id[ob.name] = len(name_id)
@@ -1865,7 +1847,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
         object_chunk.add_variable("name", _3ds_string(sane_name(ob.name)))
 
         # Make a mesh chunk out of the mesh
-        object_chunk.add_subchunk(make_mesh_chunk(ob, mesh, matrix, materialDict, translation))
+        object_chunk.add_subchunk(make_mesh_chunk(ob, mesh, matrix, materialDict))
 
         # Add hierachy chunk with ID from object_id dictionary
         if use_hierarchy:
@@ -1888,21 +1870,21 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Export object node
         if use_keyframes and not use_hierarchy:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
+            kfdata.add_subchunk(make_object_node(ob, position, rotation, scale, name_id, use_apply_transform))
 
         i += i
 
     # Create chunks for all empties - only requires a object node
     if use_keyframes and not use_hierarchy:
         for ob in empty_objects:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
+            kfdata.add_subchunk(make_object_node(ob, position, rotation, scale, name_id, use_apply_transform))
 
     # Create light object chunks
     for ob in light_objects:
         object_chunk = _3ds_chunk(OBJECT)
         obj_light_chunk = _3ds_chunk(OBJECT_LIGHT)
         color_float_chunk = _3ds_chunk(RGB)
-        light_distance = translation[ob.name]
+        light_distance = position[ob.name]
         light_attenuate = _3ds_chunk(LIGHT_ATTENUATE)
         light_inner_range = _3ds_chunk(LIGHT_INNER_RANGE)
         light_outer_range = _3ds_chunk(LIGHT_OUTER_RANGE)
@@ -1984,16 +1966,16 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Export light and spotlight target node
         if use_keyframes:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
+            kfdata.add_subchunk(make_object_node(ob, position, rotation, scale, name_id, use_apply_transform))
             if ob.data.type == 'SPOT':
-                kfdata.add_subchunk(make_target_node(ob, translation, rotation, scale, name_id))
+                kfdata.add_subchunk(make_target_node(ob, position, rotation, scale, name_id))
 
     # Create camera object chunks
     for ob in camera_objects:
         object_chunk = _3ds_chunk(OBJECT)
         camera_chunk = _3ds_chunk(OBJECT_CAMERA)
         crange_chunk = _3ds_chunk(OBJECT_CAM_RANGES)
-        camera_distance = translation[ob.name]
+        camera_distance = position[ob.name]
         camera_target = calc_target(camera_distance, rotation[ob.name].x, rotation[ob.name].z)
         object_chunk.add_variable("camera", _3ds_string(sane_name(ob.name)))
         camera_chunk.add_variable("location", _3ds_point_3d(camera_distance))
@@ -2021,8 +2003,8 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Export camera and target node
         if use_keyframes:
-            kfdata.add_subchunk(make_object_node(ob, translation, rotation, scale, name_id, use_apply_transform))
-            kfdata.add_subchunk(make_target_node(ob, translation, rotation, scale, name_id))
+            kfdata.add_subchunk(make_object_node(ob, position, rotation, scale, name_id, use_apply_transform))
+            kfdata.add_subchunk(make_target_node(ob, position, rotation, scale, name_id))
 
     # Add main object info chunk to primary chunk
     primary.add_subchunk(object_info)
