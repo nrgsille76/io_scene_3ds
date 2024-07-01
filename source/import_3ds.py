@@ -189,12 +189,10 @@ parent_dictionary = {}
 matrix_dictionary = {}
 
 
-class Chunk:
-    __slots__ = (
-        "ID",
-        "length",
-        "bytes_read",
-    )
+class Chunk(object):
+
+    __slots__ = "ID", "length", "bytes_read"
+
     # we don't read in the bytes_read, we compute that
     binary_format = '<HI'
 
@@ -1776,6 +1774,11 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
             MEASURE = 0.0000254
         elif unit_length == 'MICROMETERS':
             MEASURE = 0.000001
+
+    if CONVERSE is None:
+        CONVERSE = mathutils.Matrix()
+    if FILTER is None:
+        FILTER = {'WORLD', 'MESH', 'LIGHT', 'CAMERA', 'EMPTY'}
 
     context.window.cursor_set('WAIT')
     imported_objects = []  # Fill this list with objects
