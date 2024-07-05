@@ -1819,28 +1819,30 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
         transmtx[ob.name] = mtx_scale.copy()
         position[ob.name] = mtx_scale @ matrix.to_translation()
         rotation[ob.name] = matrix.to_euler()
-        scale[ob.name] = mtx_scale.copy()
+        scale[ob.name] = mtx_scale @ matrix.to_scale()
 
     for ob in empty_objects:
         name_id[ob.name] = len(name_id)
         transmtx[ob.name] = mtx_scale.copy()
         position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
-        scale[ob.name] = mtx_scale.copy()
+        scale[ob.name] = mtx_scale @ ob.scale
 
     for ob in light_objects:
         name_id[ob.name] = len(name_id)
         object_id[ob.name] = len(object_id)
+        transmtx[ob.name] = mtx_scale.copy()
         position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
-        scale[ob.name] = mtx_scale.copy()
+        scale[ob.name] = mtx_scale @ ob.scale
 
     for ob in camera_objects:
         name_id[ob.name] = len(name_id)
         object_id[ob.name] = len(object_id)
+        transmtx[ob.name] = mtx_scale.copy()
         position[ob.name] = mtx_scale @ ob.location
         rotation[ob.name] = ob.rotation_euler
-        scale[ob.name] = mtx_scale.copy()
+        scale[ob.name] = mtx_scale @ ob.scale
 
     # Create object chunks for all meshes
     i = 0
