@@ -1352,7 +1352,7 @@ def make_object_node(ob, name_id, transmtx, position, rotation, scale, use_apply
         ob_rot = rot_invert.to_euler() if use_apply_transform else rotation[parent.name]
         ob_size = mathutils.Vector((1.0, 1.0, 1.0))
 
-    obj_node.add_subchunk(make_track_chunk(POS_TRACK_TAG, ob, ob_pos, ob_rot, ob_scale, ob_mtx))
+    obj_node.add_subchunk(make_track_chunk(POS_TRACK_TAG, ob, ob_pos, ob_rot, ob_size, ob_mtx))
 
     if ob.type == 'MESH' or ob.type in EMPTYS:
         obj_node.add_subchunk(make_track_chunk(ROT_TRACK_TAG, ob, ob_pos, ob_rot, ob_size, ob_mtx))
