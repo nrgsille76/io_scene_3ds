@@ -1872,7 +1872,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
         if object_chunk.validate():
             object_info.add_subchunk(object_chunk)
         else:
-            operator.report({'WARNING'}, "Object %r can't be written into a 3DS file")
+            operator.report({'WARNING'}, "Object %r can't be written into a 3DS file"  % ob.name)
 
         # Export object node
         if use_keyframes and not use_hierarchy:
