@@ -1,13 +1,13 @@
 schema_version = "1.0.0"
 id = "autodesk_3ds_format"
 name = "Autodesk 3D Studio (.3ds)"
-version = "2.7.0"
+version = "2.7.1"
 tagline = "Import-Export 3DS scenes, objects, cameras, lights & animations"
 maintainer = "Sebastian Sille"
 type = "add-on"
 tags = ["Import-Export", "Scene", "Object", "Camera", "Lighting", "Animation"]
 blender_version_min = "4.2.0"
-license = ["SPDX:GPL-2.0-or-later"]
+license = ["SPDX:GPL-3.0-or-later"]
 website = "https://projects.blender.org/extensions/io_scene_3ds/wiki"
 copyright = [
     "2024 Bob Holcomb",
