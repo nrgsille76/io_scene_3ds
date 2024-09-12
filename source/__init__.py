@@ -5,7 +5,7 @@
 
 
 __author__ = "Sebastian Sille <nrgsille@gmail.com>"
-__version__ = "2.7.1"
+__version__ = "2.7.2"
 __date__ = "24 Sep 2020"
 
 
@@ -36,7 +36,7 @@ if "bpy" in locals():
 @orientation_helper(axis_forward='Y', axis_up='Z')
 class Import3DS(bpy.types.Operator, ImportHelper):
     """Import from 3DS file format (.3ds)"""
-    bl_idname = "import_scene.3ds"
+    bl_idname = "import_scene.max3ds"
     bl_label = 'Import 3DS'
     bl_options = {'PRESET', 'UNDO'}
 
@@ -159,7 +159,7 @@ def import_transform(layout, operator):
 @orientation_helper(axis_forward='Y', axis_up='Z')
 class Export3DS(bpy.types.Operator, ExportHelper):
     """Export to 3DS file format (.3ds)"""
-    bl_idname = "export_scene.3ds"
+    bl_idname = "export_scene.max3ds"
     bl_label = 'Export 3DS'
     bl_options = {'PRESET', 'UNDO'}
 
@@ -290,11 +290,11 @@ def export_transform(layout, operator):
         body.prop(operator, "axis_up")
 
 
-class IO_FH_3dsMax(bpy.types.FileHandler):
-    bl_idname = "IO_FH_3dsMax"
+class IO_FH_max3ds(bpy.types.FileHandler):
+    bl_idname = "IO_FH_max3ds"
     bl_label = "3DS"
-    bl_import_operator = "import_scene.3ds"
-    bl_export_operator = "export_scene.3ds"
+    bl_import_operator = "import_scene.max3ds"
+    bl_export_operator = "export_scene.max3ds"
     bl_file_extensions = ".3ds;.3DS"
 
     @classmethod
@@ -314,7 +314,7 @@ def menu_func_import(self, context):
 def register():
     bpy.utils.register_class(Import3DS)
     bpy.utils.register_class(Export3DS)
-    bpy.utils.register_class(IO_FH_3dsMax)
+    bpy.utils.register_class(IO_FH_max3ds)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
@@ -322,7 +322,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(Import3DS)
     bpy.utils.unregister_class(Export3DS)
-    bpy.utils.unregister_class(IO_FH_3dsMax)
+    bpy.utils.unregister_class(IO_FH_max3ds)
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
