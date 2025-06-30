@@ -69,15 +69,22 @@ MATWIRESIZE = 0xA087  # Rendered wire size in pixels
 MATSHADING = 0xA100  # Material shading method
 
 # >------ sub defines of MAT_MAP
-MAT_DIFFUSEMAP = 0xA200  # This is a header for a new diffuse texture
-MAT_SPECMAP = 0xA204  # head for specularity map
-MAT_OPACMAP = 0xA210  # head for opacity map
-MAT_REFLMAP = 0xA220  # head for reflect map
-MAT_BUMPMAP = 0xA230  # head for normal map
+MAT_DIFFUSEMAP = 0xA200  # Header for diffuse texture
+MAT_SPECMAP = 0xA204  # Header for specularity map
+MAT_OPACMAP = 0xA210  # Header for opacity map
+MAT_REFLMAP = 0xA220  # Header for reflect map
+MAT_BUMPMAP = 0xA230  # Header for normal map
 MAT_BUMP_PERCENT = 0xA252  # Normalmap strength (percent)
-MAT_TEX2MAP = 0xA33A  # head for secondary texture
-MAT_SHINMAP = 0xA33C  # head for roughness map
-MAT_SELFIMAP = 0xA33D  # head for emission map
+MAT_TEX2MAP = 0xA33A  # Header for secondary texture
+MAT_SHINMAP = 0xA33C  # Header for roughness map
+MAT_SELFIMAP = 0xA33D  # Header for emission map
+MAT_TEXMASK = 0xA33E  # Header for texture mask
+MAT_OPACMASK = 0xA342  # Header for opacity mask
+MAT_BUMPMASK = 0xA344  # Header for normal mask
+MAT_SHINMASK = 0xA346  # Header for shininess mask
+MAT_SPECMASK = 0xA348  # Header for specular mask
+MAT_SELFIMASK = 0xA34A  # Header for emission mask
+MAT_REFLMASK = 0xA34C  # Header for reflection mask
 MAT_MAP_FILE = 0xA300  # This holds the file name of a texture
 MAT_MAP_TILING = 0xa351   # 2nd bit (from LSB) is mirror UV flag
 MAT_MAP_TEXBLUR = 0xA353  # Texture blurring factor
@@ -101,6 +108,8 @@ PCTF = 0x0031  # Percent float
 MASTERSCALE = 0x0100  # Master scale factor
 
 # >------ sub defines of OBJECT
+OBJECT_NOLOFTER = 0x4011  # Object doesnt render flag
+OBJECT_NOSHADOW = 0x4012  # Object doesnt cast shadows flag
 OBJECT_MESH = 0x4100  # This lets us know that we are reading a new object
 OBJECT_LIGHT = 0x4600  # This lets us know we are reading a light object
 OBJECT_CAMERA = 0x4700  # This lets us know we are reading a camera object
@@ -168,8 +177,7 @@ EMPTYS = {'EMPTY'}
 DUMMYS = {'ARMATURE', 'LATTICE', 'SPEAKER', 'VOLUME'}
 OTHERS = {'CURVE', 'SURFACE', 'FONT', 'META'}
 
-# So 3ds max can open files, limit names to 12 in length
-# this is very annoying for filenames!
+# So 3ds max can open files, limit names to 12 in length, this is very annoying for filenames!
 name_unique = []  # stores str, ascii only
 name_mapping = {}  # stores {orig: byte} mapping
 
@@ -179,7 +187,7 @@ def sane_name(name):
         return name_fixed
 
     # Strip non ascii chars
-    new_name_clean = new_name = name.encode("ASCII", "replace").decode("ASCII")[:24]
+    new_name_clean = new_name = name.encode("ASCII", "replace").decode("ASCII")[:36]
     i = 0
 
     while new_name in name_unique:
@@ -192,8 +200,16 @@ def sane_name(name):
     return new_name
 
 
+def clamp_values(val, minv, maxv):
+    if hasattr(val, "__iter__"):
+        return tuple(max(minv, min(maxv, v)) for v in val)
+    else:
+        return max(minv, min(maxv, val))
+
+
 def uv_key(uv):
     return round(uv[0], 6), round(uv[1], 6)
+
 
 # Size defines
 SZ_SHORT = 2
@@ -558,7 +574,32 @@ def make_percent_subchunk(chunk_id, percent):
     return pct_sub
 
 
-def make_texture_chunk(chunk_id, teximages, pct):
+
+def make_mapping_chunks(tex_chunk, scale, translation, rotation):
+    """Make Material Map mapping chunks."""
+
+    tex_map_uscale = _3ds_chunk(MAT_MAP_USCALE)
+    tex_map_uscale.add_variable("mapuscale", _3ds_float(round(scale[0], 6)))
+    tex_chunk.add_subchunk(tex_map_uscale)
+
+    tex_map_vscale = _3ds_chunk(MAT_MAP_VSCALE)
+    tex_map_vscale.add_variable("mapvscale", _3ds_float(round(scale[1], 6)))
+    tex_chunk.add_subchunk(tex_map_vscale)
+
+    tex_map_uoffset = _3ds_chunk(MAT_MAP_UOFFSET)
+    tex_map_uoffset.add_variable("mapuoffset", _3ds_float(round(translation[0], 6)))
+    tex_chunk.add_subchunk(tex_map_uoffset)
+
+    tex_map_voffset = _3ds_chunk(MAT_MAP_VOFFSET)
+    tex_map_voffset.add_variable("mapvoffset", _3ds_float(round(translation[1], 6)))
+    tex_chunk.add_subchunk(tex_map_voffset)
+
+    tex_map_angle = _3ds_chunk(MAT_MAP_ANG)
+    tex_map_angle.add_variable("mapangle", _3ds_float(round(rotation[2], 6)))
+    tex_chunk.add_subchunk(tex_map_angle)
+
+
+def make_texture_chunk(chunk_id, teximages, texmixer, pct, mapnode=None):
     """Make Material Map texture chunk."""
     # Add texture percentage value (100 = 1.0)
     mat_sub = make_percent_subchunk(chunk_id, pct)
@@ -581,6 +622,20 @@ def make_texture_chunk(chunk_id, teximages, pct):
 
         mat_sub_tiling.add_variable("tiling", _3ds_ushort(tiling))
         mat_sub.add_subchunk(mat_sub_tiling)
+
+        if mapnode:
+            make_mapping_chunks(mat_sub, mapnode.inputs[3].default_value, mapnode.inputs[1].default_value, mapnode.inputs[2].default_value)
+
+        if texmixer:  # Add tint color
+            tint = (1.0, 1.0, 1.0)
+            tint1 = _3ds_chunk(MAP_COL1)
+            tint2 = _3ds_chunk(MAP_COL2)
+            input1 = next((ip.default_value for ip in texmixer.inputs if ip.identifier in {'Color1', 'A_Color'}), tint)
+            input2 = next((ip.default_value for ip in texmixer.inputs if ip.identifier in {'Color2', 'B_Color'}), tint)
+            tint1.add_variable("tint1", _3ds_rgb_color(clamp_values(input1[:3], 0.0, 1.0)))
+            tint2.add_variable("tint2", _3ds_rgb_color(clamp_values(input2[:3], 0.0, 1.0)))
+            mat_sub.add_subchunk(tint1)
+            mat_sub.add_subchunk(tint2)
 
     for tex in teximages:
         extend = tex.extension
@@ -636,39 +691,21 @@ def make_material_texture_chunk(chunk_id, texslots, pct):
         texblur = 0.0
         mat_sub_texblur = _3ds_chunk(MAT_MAP_TEXBLUR)
         if texslot.socket_dst.identifier in {'Base Color', 'Specular Tint'}:
-            texblur = texslot.node_dst.inputs['Sheen Weight'].default_value
+            texblur = clamp_values(texslot.node_dst.inputs['Sheen Weight'].default_value, 0.0, 1.0)
         mat_sub_texblur.add_variable("maptexblur", _3ds_float(round(texblur, 6)))
         mat_sub.add_subchunk(mat_sub_texblur)
 
-        mat_sub_uscale = _3ds_chunk(MAT_MAP_USCALE)
-        mat_sub_uscale.add_variable("mapuscale", _3ds_float(round(texslot.scale[0], 6)))
-        mat_sub.add_subchunk(mat_sub_uscale)
+        make_mapping_chunks(mat_sub, texslot.scale, texslot.translation, texslot.rotation)
 
-        mat_sub_vscale = _3ds_chunk(MAT_MAP_VSCALE)
-        mat_sub_vscale.add_variable("mapvscale", _3ds_float(round(texslot.scale[1], 6)))
-        mat_sub.add_subchunk(mat_sub_vscale)
-
-        mat_sub_uoffset = _3ds_chunk(MAT_MAP_UOFFSET)
-        mat_sub_uoffset.add_variable("mapuoffset", _3ds_float(round(texslot.translation[0], 6)))
-        mat_sub.add_subchunk(mat_sub_uoffset)
-
-        mat_sub_voffset = _3ds_chunk(MAT_MAP_VOFFSET)
-        mat_sub_voffset.add_variable("mapvoffset", _3ds_float(round(texslot.translation[1], 6)))
-        mat_sub.add_subchunk(mat_sub_voffset)
-
-        mat_sub_angle = _3ds_chunk(MAT_MAP_ANG)
-        mat_sub_angle.add_variable("mapangle", _3ds_float(round(texslot.rotation[2], 6)))
-        mat_sub.add_subchunk(mat_sub_angle)
-
-        if texslot.socket_dst.identifier in {'Base Color', 'Specular Tint'}: # Add tint color
-            tint = texslot.socket_dst.identifier == 'Base Color' and texslot.image.colorspace_settings.name == 'Non-Color'
-            if tint or texslot.socket_dst.identifier == 'Specular Tint':
-                tint1 = _3ds_chunk(MAP_COL1)
-                tint2 = _3ds_chunk(MAP_COL2)
-                tint1.add_variable("tint1", _3ds_rgb_color(texslot.node_dst.inputs['Coat Tint'].default_value[:3]))
-                tint2.add_variable("tint2", _3ds_rgb_color(texslot.node_dst.inputs['Sheen Tint'].default_value[:3]))
-                mat_sub.add_subchunk(tint1)
-                mat_sub.add_subchunk(tint2)
+        if texslot.socket_dst.identifier == 'Specular Tint':  # Add tint color
+            tint1 = _3ds_chunk(MAP_COL1)
+            tint2 = _3ds_chunk(MAP_COL2)
+            color1 = clamp_values(texslot.node_dst.inputs['Coat Tint'].default_value[:3], 0.0, 1.0)
+            color2 = clamp_values(texslot.node_dst.inputs['Sheen Tint'].default_value[:3], 0.0, 1.0)
+            tint1.add_variable("tint1", _3ds_rgb_color(color1))
+            tint2.add_variable("tint2", _3ds_rgb_color(color2))
+            mat_sub.add_subchunk(tint1)
+            mat_sub.add_subchunk(tint2)
 
     # Store all textures for this mapto in order. This at least is what the
     # 3DS exporter did so far, afaik most readers will just skip over 2nd textures
@@ -717,22 +754,29 @@ def make_material_chunk(material, image):
             material_chunk.add_subchunk(make_percent_subchunk(MATREFBLUR, wrap.node_principled_bsdf.inputs['Coat Weight'].default_value))
         material_chunk.add_subchunk(shading)
 
+        mxpct = 0.5
+        primary_map = None
         primary_tex = False
+        tximg = 'TEX_IMAGE'
         mtype = 'MIX', 'MIX_RGB'
         mtlks = material.node_tree.links
-        mxtex = [lk.from_node for lk in mtlks if lk.from_node.type == 'TEX_IMAGE' and lk.to_socket.identifier in {'Color2', 'B_Color'}]
-        mxpct = next((lk.from_node.inputs[0].default_value for lk in mtlks if lk.from_node.type in mtype and lk.to_node.type == 'BSDF_PRINCIPLED'), 0.5)
+        mxtex = [lk.from_node for lk in mtlks if lk.from_node.type == tximg and lk.to_socket.identifier in {'Color2', 'B_Color'}]
+        mixer = next((lk.from_node for lk in mtlks if lk.from_node.type in mtype and lk.to_node.type == 'BSDF_PRINCIPLED'), False)
+        if mixer:
+            mxpct = next((ip.default_value for ip in mixer.inputs if ip.identifier in {'Fac', 'Factor_Float'}), 0.5)
 
         if wrap.base_color_texture:
             color = [wrap.base_color_texture]
             c_pct = 0.7 + sum(wrap.base_color[:]) * 0.1
+            primary_map = wrap.base_color_texture.node_mapping
             matmap = make_material_texture_chunk(MAT_DIFFUSEMAP, color, c_pct)
             if matmap:
                 material_chunk.add_subchunk(matmap)
                 primary_tex = True
 
         if mxtex and not primary_tex:
-            material_chunk.add_subchunk(make_texture_chunk(MAT_DIFFUSEMAP, mxtex, mxpct))
+            primary_map = next((lk.from_node for lk in mtlks if lk.from_node.type == 'MAPPING' and lk.to_node.name == mxtex[0].name), None)
+            material_chunk.add_subchunk(make_texture_chunk(MAT_DIFFUSEMAP, mxtex, mixer, mxpct, primary_map))
             primary_tex = True
 
         if wrap.specular_tint_texture:
@@ -759,6 +803,7 @@ def make_material_chunk(material, image):
         if wrap.normalmap_texture:
             normal = [wrap.normalmap_texture]
             b_pct = wrap.normalmap_strength
+            primary_map = wrap.normalmap_texture.node_mapping
             matmap = make_material_texture_chunk(MAT_BUMPMAP, normal, b_pct)
             if matmap:
                 material_chunk.add_subchunk(matmap)
@@ -778,15 +823,54 @@ def make_material_chunk(material, image):
             if matmap:
                 material_chunk.add_subchunk(matmap)
 
+        if wrap.transmission_texture:
+            transmission = [wrap.transmission_texture]
+            t_pct = wrap.transmission
+            matmap = make_material_texture_chunk(MAT_OPACMASK, transmission, t_pct)
+            if matmap:
+                material_chunk.add_subchunk(matmap)
+
+        if wrap.specular_texture:
+            specular = [wrap.specular_texture]
+            matmap = make_material_texture_chunk(MAT_SPECMASK, specular, 1)
+            if matmap:
+                material_chunk.add_subchunk(matmap)
+
+        if wrap.emission_strength_texture:
+            luminous = [wrap.emission_strength_texture]
+            matmap = make_material_texture_chunk(MAT_SELFIMASK, luminous, 1)
+            if matmap:
+                material_chunk.add_subchunk(matmap)
+
+        matmap = diffmask = normalmask = shinmask = reflmask = None
         # Make sure no textures are lost. Everything that doesn't fit
         # into a channel is exported as secondary texture
-        matmap = None
         for link in mtlks:
-            mxsecondary = link.from_node if link.from_node.type == 'TEX_IMAGE' and link.to_socket.identifier in {'Color1', 'A_Color'} else False
-            if mxsecondary:
-                matmap = make_texture_chunk(MAT_TEX2MAP, [mxsecondary], 1 - mxpct)
+            bumpmask = link.from_node if link.from_node.type == tximg and link.to_node.type == 'NORMAL_MAP' and link.to_socket.identifier == 'Strength' else None
+            texmask = link.from_node if link.from_node.type == tximg and link.to_socket.identifier in {'Fac', 'Factor_Float'} else None
+            secondary = link.from_node if link.from_node.type == tximg and link.to_socket.identifier in {'Color1', 'A_Color'} else None
+            sheenmask = link.from_node if link.from_node.type == tximg and link.to_socket.identifier == 'Sheen Weight' else None
+            coatmask = link.from_node if link.from_node.type == tximg and link.to_socket.identifier == 'Coat Weight' else None
+            if secondary:
+                matmap = make_texture_chunk(MAT_TEX2MAP, [secondary], mixer, 1 - mxpct, primary_map)
+            if texmask:
+                diffmask = make_texture_chunk(MAT_TEXMASK, [texmask], False, mxpct, primary_map)
+            if bumpmask:
+                normalmask = make_texture_chunk(MAT_BUMPMASK, [bumpmask], False, 1, primary_map)
+            if sheenmask:
+                shinmask = make_texture_chunk(MAT_SHINMASK, [sheenmask], False, 1)
+            if coatmask:
+                reflmask = make_texture_chunk(MAT_REFLMASK, [coatmask], False, 1)
         if primary_tex and matmap:
             material_chunk.add_subchunk(matmap)
+        if diffmask:
+            material_chunk.add_subchunk(diffmask)
+        if normalmask:
+            material_chunk.add_subchunk(normalmask)
+        if shinmask:
+            material_chunk.add_subchunk(shinmask)
+        if reflmask:
+            material_chunk.add_subchunk(reflmask)
 
     else:
         shading.add_variable("shading", _3ds_ushort(2))  # Gouraud shading
@@ -1854,6 +1938,12 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
 
         # Make a mesh chunk out of the mesh
         object_chunk.add_subchunk(make_mesh_chunk(ob, mesh, matrix, materialDict))
+        if ob.hide_render:
+            obj_no_render_chunk = _3ds_chunk(OBJECT_NOLOFTER)
+            object_chunk.add_subchunk(obj_no_render_chunk)
+        if not ob.visible_shadow:
+            obj_no_shadow_chunk = _3ds_chunk(OBJECT_NOSHADOW)
+            object_chunk.add_subchunk(obj_no_shadow_chunk)
 
         # Add hierachy chunk with ID from object_id dictionary
         if use_hierarchy:
@@ -1872,7 +1962,7 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
         if object_chunk.validate():
             object_info.add_subchunk(object_chunk)
         else:
-            operator.report({'WARNING'}, "Object %r can't be written into a 3DS file"  % ob.name)
+            operator.report({'WARNING'}, "Object %r can't be written into a 3DS file" % ob.name)
 
         # Export object node
         if use_keyframes and not use_hierarchy:
@@ -1923,7 +2013,10 @@ def save(operator, context, filepath="", collection="", scale_factor=1.0, use_sc
             if ob.data.use_shadow:
                 spot_shadow_flag = _3ds_chunk(LIGHT_SPOT_SHADOWED)
                 spot_shadow_chunk = _3ds_chunk(LIGHT_SPOT_LSHADOW)
-                spot_shadow_chunk.add_variable("bias", _3ds_float(round(ob.data.shadow_buffer_bias,4)))
+                if ob.data.get('shadow_buffer_bias') is None:
+                    spot_shadow_chunk.add_variable("bias", _3ds_float(1.0))
+                else:
+                    spot_shadow_chunk.add_variable("bias", _3ds_float(round(ob.data.shadow_buffer_bias,4)))
                 spot_shadow_chunk.add_variable("filter", _3ds_float(round((ob.data.shadow_buffer_clip_start * 10),4)))
                 spot_shadow_chunk.add_variable("buffer", _3ds_ushort(0x200))
                 spotlight_chunk.add_subchunk(spot_shadow_flag)
