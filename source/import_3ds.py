@@ -255,7 +255,8 @@ def skip_to_end(file, skip_chunk):
 # MATERIALS #
 #############
 
-def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, offset, angle, tint1, tint2, mapto):
+def add_texture_to_material(image, contextWrapper, pct, extend, alpha,
+                            scale, offset, angle, luma, tint1, tint2, mapto):
     shader = contextWrapper.node_principled_bsdf
     nodetree = contextWrapper.material.node_tree
     shader.location = (-300, 0)
@@ -272,9 +273,10 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
         img_wrap = contextWrapper.base_color_texture
         img_wrap.node_mapping.name = 'Diffuse Mapping'
         img_wrap.node_image.name = 'Diffuse Texture'
-        image.alpha_mode = 'CHANNEL_PACKED'
         links.new(mixer.outputs[0], shader.inputs['Base Color'])
         links.new(img_wrap.node_image.outputs[0], mixer.inputs[2])
+        if luma == 'alpha':
+            image.alpha_mode = 'CHANNEL_PACKED'
         if tint2 is not None:
             mixer.inputs[2].default_value = tint2[:3] + [1]    
     elif mapto == 'ROUGHNESS':
@@ -285,10 +287,6 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
     elif mapto == 'SPECULARITY':
         shader.location = (300, -600)
         img_wrap = contextWrapper.specular_tint_texture
-        if tint1:
-            img_wrap.node_dst.inputs['Coat Tint'].default_value = tint1[:3] + [1]
-        if tint2:
-            img_wrap.node_dst.inputs['Sheen Tint'].default_value = tint2[:3] + [1]
     elif mapto == 'ALPHA':
         shader.location = (300, 300)
         img_wrap = contextWrapper.alpha_texture
@@ -357,6 +355,11 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
         img_wrap.scale = scale
         img_wrap.translation = offset
         img_wrap.rotation[2] = angle
+        if mapto in {'ROUGHNESS', 'METALLIC', 'SPECULARITY'}:
+            if tint1:
+                img_wrap.node_dst.inputs['Coat Tint'].default_value = tint1[:3] + [1]
+            if tint2:
+                img_wrap.node_dst.inputs['Sheen Tint'].default_value = tint2[:3] + [1]
         if alpha == 'alpha':
             own_node = img_wrap.node_image
             primary_tex = nodes.get('Diffuse Texture')
@@ -583,6 +586,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         uscale, vscale, uoffset, voffset, angle = 1.0, 1.0, 0.0, 0.0, 0.0
         contextWrapper.use_nodes = True
         tint1 = tint2 = None
+        luma = 'normal'
         extend = 'wrap'
         alpha = False
         pct = 100
@@ -606,6 +610,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             elif temp_chunk.ID == MAT_MAP_FILEPATH:
                 texture_name, read_str_len = read_string(file)
                 img = load_image(texture_name, dirname, place_holder=False, recursive=IMAGE_SEARCH, check_existing=True)
+                if img and img.depth in {32, 16}:
+                    luma = 'alpha'
                 temp_chunk.bytes_read += read_str_len  # plus one for the null character that gets removed
 
             elif temp_chunk.ID == MAT_BUMP_PERCENT:
@@ -633,11 +639,11 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 if tiling & 0x40:
                     alpha = 'alpha'
                 if tiling & 0x80:
-                    tint = 'tint'
+                    luma = 'tint'
                 if tiling & 0x100:
-                    tint = 'noAlpha'
+                    luma = 'noAlpha'
                 if tiling & 0x200:
-                    tint = 'RGBtint'
+                    luma = 'RGBtint'
 
             elif temp_chunk.ID == MAT_MAP_USCALE:
                 uscale = read_float(temp_chunk)
@@ -660,7 +666,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         # add the map to the material in the right channel
         if img:
             add_texture_to_material(img, contextWrapper, pct, extend, alpha, (uscale, vscale, 1),
-                                    (uoffset, voffset, 0), angle, tint1, tint2, mapto)
+                                    (uoffset, voffset, 0), angle, luma, tint1, tint2, mapto)
 
     def apply_constrain(vec):
         convector = mathutils.Vector.Fill(3, (CONSTRAIN * 0.1))
@@ -1352,7 +1358,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             else:
                 read_float(new_chunk)
             contextLamp.data.shadow_buffer_clip_start = (read_float(new_chunk) * 0.1)
-            read_short(new_chunk)
+            temp_data = file.read(SZ_U_SHORT)
+            new_chunk.bytes_read += SZ_U_SHORT
         elif CreateLightObject and new_chunk.ID == LIGHT_SPOT_SEE_CONE:  # Cone flag
             contextLamp.data.show_cone = True
         elif CreateLightObject and new_chunk.ID == LIGHT_SPOT_RECTANGLE:  # Square flag
@@ -1808,7 +1815,10 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         trans_matrix = matrix_dictionary.get(ob.name, mathutils.Matrix())
         pivot_matrix = mathutils.Matrix.Translation(trans_matrix.to_3x3() @ -pivot)
         if APPLY_MATRIX and ob.type == 'MESH':
-            ob.data.transform(trans_matrix.inverted() @ pivot_matrix)
+            try:
+                ob.data.transform(trans_matrix.inverted() @ pivot_matrix)
+            except:
+                pass
 
 
 ##########
@@ -1818,7 +1828,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
              FILTER=None, KEYFRAME=True, APPLY_MATRIX=True, CONVERSE=None, CURSOR=False):
 
-    print("importing 3DS: %r..." % (filepath), end="")
+    print("importing 3DS: %r..." % (Path(filepath).name), end="")
 
     if bpy.ops.object.select_all.poll():
         bpy.ops.object.select_all(action='DESELECT')
@@ -1831,7 +1841,7 @@ def load_3ds(filepath, context, CONSTRAIN=10.0, UNITS=False, IMAGE_SEARCH=True,
     # here we go!
     read_chunk(file, current_chunk)
     if current_chunk.ID != PRIMARY:
-        print("\tFatal Error:  Not a valid 3ds file: %r" % filepath)
+        print("\tFatal Error:  Not a valid 3ds file: %r" % Path(filepath).name)
         file.close()
         return
 
