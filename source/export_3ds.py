@@ -697,7 +697,7 @@ def make_material_texture_chunk(chunk_id, texslots, pct):
 
         make_mapping_chunks(mat_sub, texslot.scale, texslot.translation, texslot.rotation)
 
-        if texslot.socket_dst.identifier == 'Specular Tint':  # Add tint color
+        if texslot.socket_dst.identifier in {'Metallic', 'Roughness', 'Specular Tint'}:  # Add tint color
             tint1 = _3ds_chunk(MAP_COL1)
             tint2 = _3ds_chunk(MAP_COL2)
             color1 = clamp_values(texslot.node_dst.inputs['Coat Tint'].default_value[:3], 0.0, 1.0)
